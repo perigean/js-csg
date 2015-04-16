@@ -1,7 +1,7 @@
 I'm trying to implement a 2d CSG algorithm for JavaScript
 
-The algorithm pushes triangle meshes through a BSP tree, so it only supports subtraction (for now?).
+The algorithm pushes polygons through a BSP tree, so it only supports subtraction (for now?).
 
-The triangle mesh structure should eventually be a superset of a WebGL indexed triangle list, so display will be easy.
+polygons are themselves stored on branches of a bsp tree, so collision detection and csg operations will be easy.
 
 Lost of stuff to do, but need source control first...
