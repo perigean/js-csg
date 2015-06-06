@@ -14,6 +14,11 @@
 //
 
 
+// TODO: make a mesh type to use instead of polygons (Triangles? How to index from BSP? How to update adjacent split's polys? Has to be aware of polygons)
+// TODO: make clip BSP be destructive, add a clone operation
+
+// TODO: move bspShape stuff outside?
+
 function bspSide(bsp, p) {
     return (p.x - bsp.px) * bsp.nx + (p.y - bsp.py) * bsp.ny;
 }
@@ -39,19 +44,34 @@ function bspTreeIn(bsp, p) {
     }
 }
 
-// TODO: bspTransform, add in transform
-function bspTreeTranslate(bsp, d) {
-    if (bsp == null) {
-        return null;
-    }
 
-    return {
-        px: bsp.px + d.x,
-        py: bsp.py + d.y,
-        nx: bsp.nx,
-        ny: bsp.ny,
-        in: bspTreeTranslate(bsp.in, d),
-        out: bspTreeTranslate(bsp.out, d)};
+function bspSolidTransform(bspSolid, t) {
+  if (bspSolid == null) {
+      return;
+  }
+
+  // TODO: maybe make bsp.nx and bsp.ny etc. in point / vector
+  var n = { x: bspSolid.nx, y: bspSolid.ny };
+  var p = { x: bspSolid.px, y: bspSolid.py };
+
+  transformPoint(t, p);
+  transformNormal(t, n);
+
+  bspSolid.nx = n.x;
+  bspSolid.ny = n.y;
+  bspSolid.px = p.x;
+  bspSolid.py = p.y;
+
+  if (bspSolid.poly) {
+    var poly = bspSolid.poly;
+
+    for (var i = 0; i < poly.length; i++) {
+      transformPoint(t, poly[i]);
+    }
+  }
+
+  bspSolidTransform(bspSolid.in, t);
+  bspSolidTransform(bspSolid.out, t);
 }
 
 function bspIntersect(bsp, a, b) {
@@ -392,4 +412,80 @@ function bspTreeSolidClip(bsp, solid) {
     }
 
     return solid;
+}
+
+
+// See http://en.wikipedia.org/wiki/Polygon#Area_and_centroid
+
+function bspSolidCentroidArea(bspSolid) {
+  if (bspSolid == null) {
+    return null;
+  } else if (bspSolid.poly) {
+    // Leaf step, found a polygon
+    var poly = bspSolid.poly;
+    var prevP = poly[poly.length - 1];
+    var a = 0.0;
+    var cx = 0.0;
+    var cy = 0.0;
+
+    for (var i = 0; i < poly.length; i++) {
+      var p = poly[i];
+      // accumulate area
+      a += prevP.x * p.y - p.x * prevP.y;
+
+      // accumulate centroid
+      cx += (prevP.x + p.x) * (prevP.x * p.y - p.x * prevP.y);
+      cy += (prevP.y + p.y) * (prevP.x * p.y - p.x * prevP.y);
+
+      prevP = p;
+    }
+
+    return { x: cx / (3.0 * a), y: cy / (3.0 * a), area: a * 0.5 }
+  } else {
+    // Recursive step, possibly merge two centroids
+    var inC = bspSolidCentroidArea(bspSolid.in);
+    var outC = bspSolidCentroidArea(bspSolid.out);
+
+    if (inC != null && outC != null) {
+      // average centroids
+      var area = inC.area + outC.area;
+
+      return {
+        x: (inC.x * inC.area + outC.x * outC.area) / area,
+        y: (inC.y * inC.area + outC.y * outC.area) / area,
+        area: area
+      };
+
+    } else if (inC != null) {
+      return inC;
+    } else if (outC != null) {
+      return outC;
+    } else {
+      return null;
+    }
+  }
+}
+
+function bspSolidFill(bsp, ctx) {
+    if (bsp == null) {
+        return;
+    } else if (bsp.poly) {
+        polyPath(bsp.poly, ctx);
+        ctx.fill();
+    } else {
+        bspSolidFill(bsp.in, ctx);
+        bspSolidFill(bsp.out, ctx);
+    }
+}
+
+function bspSolidStroke(bsp, ctx) {
+    if (bsp == null) {
+        return;
+    } else if (bsp.poly) {
+        polyPath(bsp.poly, ctx);
+        ctx.stroke();
+    } else {
+        bspSolidStroke(bsp.in, ctx);
+        bspSolidStroke(bsp.out, ctx);
+    }
 }

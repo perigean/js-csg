@@ -1,24 +1,30 @@
 // TODO: unit tests, it will suck if there is a typo in here, so find it first!
 
-function createTransform() {
+function transformCreate() {
   return {
     ix: 1.0, jx: 0.0, dx: 0.0,
     iy: 0.0, jy: 1.0, dy: 0.0};
 }
 
-function createTranslateTransform(x, y) {
+function transformTranslateCreate(x, y) {
   return {
     ix: 1.0, jx: 0.0, dx: x,
     iy: 0.0, jy: 1.0, dy: y};
 }
 
-function createScaleTransform(s) {
+function transformScaleCreate(s) {
   return {
     ix: s, jx: 0.0, dx: 0.0,
     iy: 0.0, jy: s, dy: 0.0};
 }
 
-function createRotateTransform(angle) {
+function transformStretchCreate(sx, sy) {
+  return {
+    ix: sx, jx: 0.0, dx: 0.0,
+    iy: 0.0, jy: sy, dy: 0.0};
+}
+
+function transformRotateCreate(angle) {
   var c = Math.cos(angle);
   var s = Math.sin(angle);
   return {
@@ -64,9 +70,17 @@ function transformInvert(t) {
 }
 
 function transformPoint(t, p) {
-  return { x: p.x * t.ix + p.y * t.jx + t.dx, y: p.x * t.iy + p.y * t.jy + t.dy };
+  var x = p.x * t.ix + p.y * t.jx + t.dx;
+  var y = p.x * t.iy + p.y * t.jy + t.dy;
+
+  p.x = x;
+  p.y = y;
 }
 
 function transformNormal(t, n) {
-  return { x: p.x * t.ix + p.y * t.jx, y: p.x * t.iy + p.y * t.jy };
+  var x = n.x * t.ix + n.y * t.jx;
+  var y = n.x * t.iy + n.y * t.jy;
+
+  n.x = x;
+  n.y = y;
 }

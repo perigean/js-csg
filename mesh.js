@@ -1,4 +1,6 @@
 
+// TODO: make this a polygon mesh instead, have big array of edges, indexes for next and link? Why not big array of polys, each having a set of links?
+
 // requires bsp.js
 
 var meshTest = {
@@ -36,7 +38,7 @@ function meshVerify(mesh) {
 }
 
 function meshDraw(mesh, ctx) {
-    
+
     // draw vertices
     ctx.fillStyle = "#000000";
     for (var v = 0; v < mesh.vert.length; v += 2) {
@@ -44,13 +46,13 @@ function meshDraw(mesh, ctx) {
         ctx.arc(mesh.vert[v], mesh.vert[v + 1], 3, 0, 6.28318530718);
         ctx.fill();
     }
-    
+
     ctx.strokeStyle = "#000000";
     for (var t = 0; t < mesh.tri.length; t += 3) {
         var v0 = mesh.tri[t];
         var v1 = mesh.tri[t + 1];
         var v2 = mesh.tri[t + 2];
-        
+
         var v0x = mesh.vert[v0 * 2];
         var v0y = mesh.vert[v0 * 2 + 1];
         var v1x = mesh.vert[v1 * 2];
@@ -64,7 +66,7 @@ function meshDraw(mesh, ctx) {
         ctx.lineTo(0.02 * v0x + 0.02 * v1x + 0.96 * v2x, 0.02 * v0y + 0.02 * v1y + 0.96 * v2y);
         ctx.closePath();
         ctx.stroke();
-        
+
         ctx.fillText((t / 3).toString(), (v0x + v1x + v2x) / 3, (v0y + v1y + v2y) / 3);
     }
 }
@@ -82,22 +84,22 @@ function meshIntersectEdgeBsp(mesh, tri, edge, bsp) {
     // indices of vertex for edge
     var va = mesh.tri[tri * 3 + edge];
     var vb = mesh.tri[tri * 3 + (edge + 1) % 3];
-    
+
     // endpoints of edge
     var ax = mesh.vert[va * 2];
     var ay = mesh.vert[va * 2 + 1];
     var bx = mesh.vert[vb * 2];
     var by = mesh.vert[vb * 2 + 1];
-    
+
     if (bspCross(bsp, ax, ay, bx, by)) {
         // get intersection point
         var p = bspIntersect(bsp, ax, ay, bx, by);
-        
+
         // get index of new point, and add to vertex list
         var vp = mesh.vert.length / 2;
         mesh.vert.push(p.x);
         mesh.vert.push(p.y);
-        
+
         return vp;
     } else {
         return -1;
@@ -107,11 +109,11 @@ function meshIntersectEdgeBsp(mesh, tri, edge, bsp) {
 function meshLinkEdge(mesh, u, v) {
     var triu = Math.floor(u / 3);
     var triv = Math.floor(v / 3);
-    
+
     // u1 is next vertex in triu after u, v1 is after v
     var u1 = (u + 1) % 3 + triu;
     var v1 = (v + 1) % 3 + triv;
-    
+
     // assert that beginning and end of linked edge share vertices
     if (mesh.tri[u] != mesh.tri[v1]) {
         throw "linked edges " + u + " and " + v + " don't line up";
@@ -119,7 +121,7 @@ function meshLinkEdge(mesh, u, v) {
     if (mesh.tri[v] != mesh.tri[u1]) {
         throw "linked edges " + u + " and " + v + " don't line up";
     }
-    
+
     mesh.link[u] = v;
     mesh.link[v] = u;
 }
@@ -128,11 +130,11 @@ function meshSplitEdge(mesh, tri, edge, point) {
     var v0 = tri * 3 + edge;
     var v1 = tri * 3 + (edge + 1) % 3;
     var v2 = tri * 3 + (edge + 2) % 3;
-    
+
     var p0 = mesh.tri[v0];
     var p1 = mesh.tri[v1];
     var p2 = mesh.tri[v2];
-    
+
     // add the new triangle
     var newTri = mesh.tri.length / 3;
     mesh.tri.push(point);
@@ -141,17 +143,17 @@ function meshSplitEdge(mesh, tri, edge, point) {
     mesh.link.push(-1);
     mesh.link.push(-1);
     mesh.link.push(-1);
-    
+
     // link new tri to possible other triangle linked from v1
     if (mesh.link[v1] >= 0) {
         meshLinkEdge(mesh, newTri * 3 + 1, mesh.link[v1]);
     }
-    
+
     // shrink tri to make room for newTri, link newTri to tri
     mesh.tri[v1] = point;
-    
+
     //mesh.linkEdge(mesh, v1, newTri + 2);
-    
+
     // if the split edge is linked to another triangle
     if (mesh.link[v0] >= 0) {
         throw "not implemented yet!";
@@ -162,10 +164,10 @@ function meshTriBspSide(mesh, tri, bsp) {
     var p0 = mesh.tri[tri * 3];
     var p1 = mesh.tri[tri * 3 + 1];
     var p2 = mesh.tri[tri * 3 + 2];
-    
+
     var px = (mesh.vert[p0 * 2] + mesh.vert[p1 * 2] + mesh.vert[p2 * 2]) / 3;
-    var py = (mesh.vert[p0 * 2 + 1] + mesh.vert[p1 * 2 + 1] + mesh.vert[p2 * 2 + 1]) / 3;    
-    
+    var py = (mesh.vert[p0 * 2 + 1] + mesh.vert[p1 * 2 + 1] + mesh.vert[p2 * 2 + 1]) / 3;
+
     return bspSide(bsp, px, py);
 }
 
@@ -179,12 +181,12 @@ function meshTriBspSide(mesh, tri, bsp) {
 function meshSplitTriBspTree(mesh, tri, bsp) {
     for (var edge = 0; edge < 3; edge++) {
         var point = meshIntersectEdgeBsp(mesh, tri, edge, bsp);
-        
+
         if (point >= 0) {
             meshSplitEdge(mesh, tri, edge, point);
         }
     }
-    
+
     if (meshTriBspSide(mesh, tri, bsp >= 0)) {
         if (bsp.in) {
             meshSplitTriBspTree(mesh, tri, bsp.in);
@@ -210,7 +212,7 @@ function meshSplitBspTree(mesh, bsp) {
 var meshTest = [
     [ { x: -200, y: -200}, { x: 200, y: -200}, { x: 200, y: 200} ],
     [ { x: -200, y: -200}, { x: -200, y: 200}, { x: 200, y: 200} ]
-];   
+];
 
 function meshDraw(mesh, ctx) {
     ctx.beginPath();

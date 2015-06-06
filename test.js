@@ -1,0 +1,4 @@
+
+function testVerify(expression, message) {
+
+}

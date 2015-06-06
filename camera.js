@@ -1,34 +1,51 @@
 
 
-
 function camCreate(canvas) {
-    var ctx = canvas.getContext('2d');
-    return {
-        ctx: ctx,
-        x: 0,
-        y: 0,
-        zoom: 1.0,
-        screenWidth: canvas.width,
-        screenHeight: canvas.height,
-    };
+  var ctx = canvas.getContext('2d');
+
+  var t = transformStretchCreate(1.0, -1.0);  // flip y axis
+  t = transformTranslate(t, canvas.width * 0.5, canvas.height * 0.5);
+
+  ctx.setTransform(t.ix, t.iy, t.jx, t.jy, t.dx, t.dy);
+
+  return {
+    canvas: canvas,
+    ctx: ctx,
+    worldToScreen: t,
+    screenToWorld: transformInvert(t),
+    transformStack: []
+  };
 }
 
-function camTransform(camera) {
-    var x = camera.screenWidth * 0.5 - camera.x;
-    var y = camera.screenHeight * 0.5 - camera.y;
-
-    camera.ctx.setTransform(camera.zoom, 0, 0, camera.zoom, x, y);
+function camPushTransform(cam, transform) {
+  cam.transformStack.push(cam.worldToScreen);
+  cam.worldToScreen = transformCompose(transform, cam.worldToScreen);
+  var t = cam.worldToScreen;
+  cam.screenToWorld = transformInvert(t);
+  cam.ctx.setTransform(t.ix, t.iy, t.jx, t.jy, t.dx, t.dy);
 }
 
-function camScreenToWorld(camera, x, y) {
-    return {
-        x: ((x - camera.screenWidth * 0.5) / camera.zoom) + camera.x,
-        y: ((y - camera.screenHeight * 0.5) / camera.zoom) + camera.y
-    };
+function camPopTransform(cam) {
+  if (cam.transformStack.length == 0) {
+    throw "Can't pop empty transform stack";
+  }
+
+  cam.worldToScreen = cam.transformStack[cam.transformStack.length - 1];
+  cam.transformStack.pop();
+
+  var t = cam.worldToScreen;
+  cam.screenToWorld = transformInvert(t);
+  cam.ctx.setTransform(t.ix, t.iy, t.jx, t.jy, t.dx, t.dy);
 }
 
-function camClear(camera) {
-    camera.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    camera.ctx.clearRect(0, 0, camera.screenWidth, camera.screenHeight);
+function camScreenToWorld(cam, p) {
+  transformPoint(cam.screenToWorld, p);
 }
 
+function camClear(cam) {
+  cam.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  cam.ctx.clearRect(0, 0, camera.canvas.width, camera.canvas.height);
+
+  var t = cam.worldToScreen;
+  cam.ctx.setTransform(t.ix, t.iy, t.jx, t.jy, t.dx, t.dy);
+}
