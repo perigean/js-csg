@@ -50,6 +50,8 @@ function bspSolidTransform(bspSolid, t) {
       return;
   }
 
+  // TODO: this is broken because currently we share verticies of polygons, so they can get transformed more than once
+
   // TODO: maybe make bsp.nx and bsp.ny etc. in point / vector
   var n = { x: bspSolid.nx, y: bspSolid.ny };
   var p = { x: bspSolid.px, y: bspSolid.py };
@@ -72,6 +74,27 @@ function bspSolidTransform(bspSolid, t) {
 
   bspSolidTransform(bspSolid.in, t);
   bspSolidTransform(bspSolid.out, t);
+}
+
+function bspTreeTransformClone(bspTree, t) {
+  if (bspTree == null) {
+      return null;
+  }
+
+  var n = { x: bspTree.nx, y: bspTree.ny };
+  var p = { x: bspTree.px, y: bspTree.py };
+
+  transformPoint(t, p);
+  transformNormal(t, n);
+
+  return {
+    px: p.x,
+    py: p.y,
+    nx: n.x,
+    ny: n.y,
+    in: bspTreeTransformClone(bspTree.in, t),
+    out: bspTreeTransformClone(bspTree.out, t)
+  };
 }
 
 function bspIntersect(bsp, a, b) {

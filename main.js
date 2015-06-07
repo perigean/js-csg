@@ -64,7 +64,7 @@ function main() {
     log = document.getElementById('log');
 
     phys = physCreate();
-    physAddShape(phys, bspSolidCreate(polyTestSquare), { x: 0.0, y: 0.0 }, Math.PI * 0.25);
+    physAddShape(phys, bspSolidCreate(polyTestSquare), { x: 0.0, y: 0.0 }, 0.0 /*Math.PI * 0.25*/);
 
     camClear(camera);
     physDraw(phys, camera);
@@ -75,7 +75,10 @@ function main() {
 
         log.innerHTML += "(" + p.x + ", " + p.y + ") <br />";
 
-        var bsp = bspTreeTranslate(bspTestSquare, p);
+        var t = transformTranslateCreate(p.x, p.y);
+        var bsp = bspTreeTransformClone(bspTestSquare, t);
+
+        physClipBodies(phys, bsp);
 
         camClear(camera);
         physDraw(phys, camera);
