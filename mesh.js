@@ -1,8 +1,52 @@
 
 // TODO: rules of mesh node lifetimes, so we know when it's safe to keep a reference
 
+function meshEdgeAssert(edge) {
+  var prev = edge.prev;
+  var next = edge.next;
+
+  if (prev.next != edge || next.prev != edge) {
+    throw "next or prev refs broken";
+  }
+
+  if (edge.link) {
+    if (edge.link.link != edge) {
+      throw "link ref broken";
+    }
+  }
+
+  var px = edge.x - prev.x;
+  var py = edge.y - prev.y;
+  var nx = next.x - edge.x;
+  var ny = next.y - edge.y;
+
+  if (px * ny - py * nx < -0.01) {
+    throw "vertex is not convex";
+  }
+}
+
+function meshPolyAssert(poly) {
+  var i = poly;
+
+  do {
+    meshEdgeAssert(i);
+    i = i.next;
+  } while (i != poly);
+}
+
+function meshEdgeInPolyAssert(poly, edge) {
+  var i = edge;
+
+  do {
+    if (i == poly) {
+      return;
+    }
+    i = i.next;
+  } while (i != edge);
+  throw "edge not in poly";
+}
+
 function meshCreate(verts) {
-  // TODO: assert poly is convex
   if (verts.length == 0) {
     return null;
   }
@@ -30,6 +74,8 @@ function meshCreate(verts) {
 
   tail.next = head;
   head.prev = tail;
+
+  meshPolyAssert(head);
 
   return head;
 }
@@ -68,7 +114,7 @@ function meshSplitEdge(edge, x, y) {
 }
 
 function meshSplitPoly(a, b) {
-  // TODO: assert that aEdge and bEdge share a poly
+  meshEdgeInPolyAssert(a, b);
 
   var newA = {
     x: a.x,
@@ -100,6 +146,9 @@ function meshSplitPoly(a, b) {
   b.next = newA;
   a.link = b;
   b.link = a;
+
+  meshPolyAssert(a);
+  meshPolyAssert(b);
 }
 
 function meshMergePoly(a, b) {
@@ -122,7 +171,8 @@ function meshMergePoly(a, b) {
   b.link = aNext.link;
   b.link.link = b;
 
-  // TODO: assert poly is convex
+  meshEdgeInPolyAssert(a, b);
+  meshPolyAssert(a);
 }
 
 function meshRemovePoly(edge) {
