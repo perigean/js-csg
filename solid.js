@@ -217,7 +217,7 @@ function solidClip(solid, bspTree) {
     var outResult = solidClip(solid.out, bspTree);
 
     if (inResult.solid == null && outResult.solid == null) {
-      return null;
+      return { clipped: true, solid: null };
     }
 
     solid.in = inResult.solid;

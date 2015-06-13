@@ -41,9 +41,6 @@ function physClipBodies(phys, bsp) {
     // transform bsp into local coordinates
 
     var localBsp = bspTreeTransformClone(bsp, body.worldToLocal)
-
-    // TODO: be able to tell if clipping happened
-
     var result = solidClip(body.solid, localBsp);
 
     if (result.clipped) {
@@ -55,9 +52,13 @@ function physClipBodies(phys, bsp) {
 
       solidTransform(body.solid, centerT);
 
-      body.d.x += ca.x;
-      body.d.y += ca.y;
+      // convert new center to world coordinates to update our position
+      transformPoint(body.localToWorld, ca);
 
+      body.d.x = ca.x;
+      body.d.y = ca.y;
+
+      // recompute transforms with new position
       body.localToWorld = transformTranslate(transformRotateCreate(body.θ), body.d.x, body.d.y);
       body.worldToLocal = transformInvert(body.localToWorld);
     }
