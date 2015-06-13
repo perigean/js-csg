@@ -27,31 +27,45 @@ var bspTestTopRight = {px: 0, py: 0, nx: 1, ny: 0,
 
 var mesh = meshCreate([{ x: 0, y: 0 },{ x: 128, y: 0 },{ x: 128, y: 128 },{ x: 0, y: 128 }]);
 
+var frame = 0;
+function renderLoop(timeStamp) {
+  frame++;
+
+  // TODO: decouple frame rate and phys time step
+
+  physTimeStep(phys, 0.016666667);
+  camClear(camera);
+  physDraw(phys, camera);
+
+  requestAnimationFrame(renderLoop);
+}
 
 function main() {
-    var canvas = document.getElementById('canvas');
-    camera = camCreate(canvas);
-    log = document.getElementById('log');
+  var canvas = document.getElementById('canvas');
+  camera = camCreate(canvas);
+  log = document.getElementById('log');
 
-    phys = physCreate();
-    physAddShape(phys, solidCreate(mesh), { x: 0.0, y: 0.0 }, Math.PI * 0.25);
+  phys = physCreate();
+  physAddShape(phys, solidCreate(mesh), { x: 0.0, y: 0.0 }, 0.0, {x: 0.0, y: 0.0 }, Math.PI * 0.25);
+
+  camClear(camera);
+  physDraw(phys, camera);
+
+  requestAnimationFrame(renderLoop);
+
+  canvas.onclick = function (evt) {
+    var p = { x: evt.offsetX, y: evt.offsetY };
+    camScreenToWorld(camera, p);
+
+    log.innerHTML += "frame " + frame + ": (" + p.x + ", " + p.y + ") <br />";
+
+    var t = transformTranslateCreate(p.x, p.y);
+    var bsp = bspTreeTransformClone(bspTestRight, t);
+
+    physClipBodies(phys, bsp);
 
     camClear(camera);
     physDraw(phys, camera);
-
-    canvas.onclick = function (evt) {
-        var p = { x: evt.offsetX, y: evt.offsetY };
-        camScreenToWorld(camera, p);
-
-        log.innerHTML += "(" + p.x + ", " + p.y + ") <br />";
-
-        var t = transformTranslateCreate(p.x, p.y);
-        var bsp = bspTreeTransformClone(bspTestSquare, t);
-
-        physClipBodies(phys, bsp);
-
-        camClear(camera);
-        physDraw(phys, camera);
-    };
+  };
 
 };

@@ -30,8 +30,8 @@ function transformRotateCreate(angle) {
   var c = Math.cos(angle);
   var s = Math.sin(angle);
   return {
-    ix:  c, jx: s, dx: 0.0,
-    iy: -s, jy: c, dy: 0.0};
+    ix: c, jx: -s, dx: 0.0,
+    iy: s, jy: c, dy: 0.0};
 }
 
 // combine two transforms, so t1 is applied, then t2
@@ -58,8 +58,8 @@ function transformRotate(t, angle) {
   var c = Math.cos(angle);
   var s = Math.sin(angle);
   return {
-    ix:  c * t.ix + s * t.iy, jx: c * t.jx + s * t.jy, dx:  c * t.dx + s * t.dy,
-    iy: -s * t.ix + c * t.iy, jy: c * t.jx - s * t.jy, dy: -s * t.dx + c * t.dy};
+    ix: c * t.ix - s * t.iy, jx: c * t.jx - s * t.jy, dx: c * t.dx - s * t.dy,
+    iy: s * t.ix + c * t.iy, jy: c * t.jx + s * t.jy, dy: s * t.dx + c * t.dy};
 }
 
 function transformInvert(t) {
