@@ -11,14 +11,14 @@ function physCreate() {
   // TODO: particles, acceleration structures etc.
 }
 
-function physAddShape(phys, bspSolid, d, θ) {
+function physAddShape(phys, solid, d, θ) {
 
   // TODO: recentre bsp solid around its centre of mass
 
-  var ca = bspSolidCentroidArea(bspSolid);
+  var ca = solidCentroidArea(solid);
   var centerT = transformTranslateCreate(-ca.x, -ca.y);
 
-  bspSolidTransform(bspSolid, centerT);
+  solidTransform(solid, centerT);
   d.x += ca.x;
   d.y += ca.y;
 
@@ -26,7 +26,7 @@ function physAddShape(phys, bspSolid, d, θ) {
   var w2l = transformInvert(l2w);
 
   phys.bodies.push({
-    bspSolid: bspSolid,
+    solid: solid,
     d: d,
     θ: θ,
     worldToLocal: w2l,
@@ -44,17 +44,23 @@ function physClipBodies(phys, bsp) {
 
     // TODO: be able to tell if clipping happened
 
-    var newBspSolid = bspTreeSolidClip(localBsp, body.bspSolid);
+    var result = solidClip(body.solid, localBsp);
 
-    // recentre based on subtracted shape
-    var ca = bspSolidCentroidArea(newBspSolid);
-    var centerT = transformTranslateCreate(-ca.x, -ca.y);
+    if (result.clipped) {
+      body.solid = result.solid;
 
-    bspSolidTransform(newBspSolid, centerT);
+      // recentre based on subtracted shape
+      var ca = solidCentroidArea(body.solid);
+      var centerT = transformTranslateCreate(-ca.x, -ca.y);
 
-    body.d.x += ca.x;
-    body.d.y += ca.y;
-    body.bspSolid = newBspSolid;
+      solidTransform(body.solid, centerT);
+
+      body.d.x += ca.x;
+      body.d.y += ca.y;
+
+      body.localToWorld = transformTranslate(transformRotateCreate(body.θ), body.d.x, body.d.y);
+      body.worldToLocal = transformInvert(body.localToWorld);
+    }
   }
 }
 
@@ -66,10 +72,8 @@ function physDraw(phys, cam) {
 
     camPushTransform(cam, body.localToWorld);
 
-    ctx.fillStyle = 'lightblue';
-    bspSolidFill(body.bspSolid, ctx);
-    ctx.strokeStyle = 'black';
-    bspSolidStroke(body.bspSolid, ctx);
+    solidFill(body.solid, camera.ctx);
+    solidStroke(body.solid, camera.ctx);
 
     ctx.beginPath();
     ctx.arc(0.0, 0.0, 4, 0, 2 * Math.PI, false);

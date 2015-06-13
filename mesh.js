@@ -1,6 +1,9 @@
 
 // TODO: rules of mesh node lifetimes, so we know when it's safe to keep a reference
 
+// depends on transform.js
+// depends on bsp.js
+
 function meshEdgeVerify(edge) {
   var prev = edge.prev;
   var next = edge.next;
@@ -80,29 +83,37 @@ function meshCreate(verts) {
   return head;
 }
 
-function meshSplitEdge(edge, x, y) {
+function meshEdgeSplit(edge, bsp) {
+  var next = edge.next;
+
+  if (bspSideStable(bsp, edge.x, edge.y) * bspSideStable(bsp, next.x, next.y) >= 0.0) {
+    throw "edge not crossing bsp";
+  }
+
+  var t = bspIntersect(bsp, edge.x, edge.y, next.x, next.y);
+
   var link = edge.link;
   var newEdge = {
-    x: x,
-    y: y,
+    x: t * edge.x + (1.0 - t) * next.x,
+    y: t * edge.y + (1.0 - t) * next.y,
     prev: edge,
     next: edge.next,
     link: link
   };
 
-  edge.next.prev = newEdge;
+  newEdge.next.prev = newEdge;
   edge.next = newEdge;
 
   if (link != null) {
     var newLink = {
-      x: x,
-      y: y,
+      x: newEdge.x,
+      y: newEdge.y,
       prev: link,
       next: link.next,
       link: edge
     };
 
-    link.next.prev = newLink;
+    newLink.next.prev = newLink;
     link.next = newLink;
 
     edge.link = newLink;
@@ -114,7 +125,66 @@ function meshSplitEdge(edge, x, y) {
   return newEdge;
 }
 
-function meshSplitPoly(a, b) {
+function meshEdgeCanMerge(edge) {
+  var link = edge.link;
+
+  if (link == null) {
+    return true;
+  }
+
+  var next = edge.next;
+
+  if (link.x != next.x || link.y != next.y) {
+    return false;
+  }
+
+  var linkNext = link.next;
+
+  if (edge.x != linkNext.x || edge.y != linkNext.y) {
+    return false;
+  }
+
+  var prev = edge.prev;
+  var linkNextNext = linkNext.next;
+
+  if (prev.x != linkNextNext.x || prev.y != linkNextNext.y ||
+      prev.link != linkNext || linkNext.link != prev) {
+    return false;
+  }
+
+  return true;
+}
+
+function meshEdgeMerge(edge) {
+  var link = edge.link;
+
+  if (!meshEdgeCanMerge(edge)) {
+    throw "Can't merge edge";
+  }
+
+  if (link != null) {
+    var remLink = link.next;
+
+    remLink.next.prev = remLink.prev;
+    remLink.prev.next = remLink.next;
+
+    edge.prev.link = link;
+    link.link = edge.prev;
+
+    remLink.next = null;
+    remLink.prev = null;
+    remLink.link = null;
+  }
+
+  edge.next.prev = edge.prev;
+  edge.prev.next = edge.next;
+
+  edge.next = null;
+  edge.prev = null;
+  edge.link = null;
+}
+
+function meshPolySplit(a, b) {
   meshEdgeInPolyVerify(a, b);
 
   var newA = {
@@ -152,41 +222,90 @@ function meshSplitPoly(a, b) {
   meshPolyVerify(b);
 }
 
-function meshMergePoly(a, b) {
+function meshPolyMerge(a, b) {
   var aNext = a.next;
   var bNext = b.next;
 
   if (a.link != b || b.link != a ||
       a.x != bNext.x || a.y != bNext.y ||
-      b.x != aNext.a || b.y != aNext.y) {
+      b.x != aNext.x || b.y != aNext.y) {
     throw "Cannot merge mesh"
   }
 
   a.next = bNext.next;
   a.next.prev = a;
   a.link = bNext.link;
-  a.link.link = a;
+  if (a.link != null) {
+    a.link.link = a;
+  }
 
   b.next = aNext.next;
   b.next.prev = b;
   b.link = aNext.link;
-  b.link.link = b;
+  if (b.link != null) {
+    b.link.link = b;
+  }
+
+  aNext.next = null;
+  aNext.prev = null;
+  aNext.link = null;
+  bNext.next = null;
+  bNext.prev = null;
+  bNext.link = null;
 
   meshEdgeInPolyVerify(a, b);
   meshPolyVerify(a);
 }
 
-function meshRemovePoly(edge) {
-  var i = edge;
+function meshPolyRemove(poly) {
+  var i = poly;
 
   do {
-    i.link.link = null;
-    i.link = null;
+    if (i.link != null) {
+      i.link.link = null;
+      i.link = null;
+    }
+
     i = i.next;
-  } while (i != edge);
+  } while (i != poly);
 }
 
-function meshStrokePoly(edge, ctx) {
+function meshPolyCentroidArea(poly) {
+  var a = 0.0;
+  var cx = 0.0;
+  var cy = 0.0;
+
+  var i = poly;
+
+  var prevX = i.prev.x;
+  var prevY = i.prev.y;
+
+  do {
+    // accumulate area
+    a += prevX * i.y - i.x * prevY;
+
+    // accumulate centroid
+    cx += (prevX + i.x) * (prevX * i.y - i.x * prevY);
+    cy += (prevY + i.y) * (prevX * i.y - i.x * prevY);
+
+    prevX = i.x;
+    prevY = i.y;
+    i = i.next;
+  } while (i != poly);
+
+  return { x: cx / (3.0 * a), y: cy / (3.0 * a), area: a * 0.5 }
+}
+
+
+function meshEdgeTransform(edge, t) {
+  var x = edge.x * t.ix + edge.y * t.jx + t.dx;
+  var y = edge.x * t.iy + edge.y * t.jy + t.dy;
+
+  edge.x = x;
+  edge.y = y;
+}
+
+function meshPolyStroke(edge, ctx) {
   var i = edge;
 
   ctx.beginPath();
@@ -198,18 +317,26 @@ function meshStrokePoly(edge, ctx) {
   } while (i != edge);
 
   ctx.stroke();
+
+  do {
+    ctx.beginPath();
+    ctx.arc(i.x, i.y, 2, 0, 2 * Math.PI, false);
+    ctx.fillStyle = 'black';
+    ctx.fill();
+    i = i.next;
+  } while (i != edge);
 }
 
-function meshFillPoly(edge, ctx) {
+function meshPolyFill(edge, ctx) {
   var i = edge;
 
   ctx.beginPath();
   ctx.moveTo(i.x, i.y);
-
   do {
     i = i.next;
     ctx.lineTo(i.x, i.y);
   } while (i != edge);
 
+  ctx.fillStyle = 'lightblue';
   ctx.fill();
 }

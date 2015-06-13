@@ -1,5 +1,7 @@
 // TODO: unit tests, it will suck if there is a typo in here, so find it first!
 
+// TODO: put vertex functions somewhere else or rename this module
+
 function transformCreate() {
   return {
     ix: 1.0, jx: 0.0, dx: 0.0,
