@@ -1,3 +1,6 @@
+// mesh.js
+//
+// Copywrite Charles Dick 2015
 
 // TODO: rules of mesh node lifetimes, so we know when it's safe to keep a reference
 

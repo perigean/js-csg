@@ -1,3 +1,7 @@
+// main.js
+//
+// Copywrite Charles Dick 2015
+
 var camera;
 var log;
 var phys;
@@ -46,7 +50,7 @@ function main() {
   log = document.getElementById('log');
 
   phys = physCreate();
-  physAddShape(phys, solidCreate(mesh), { x: 0.0, y: 0.0 }, 0.0, {x: 0.0, y: 0.0 }, Math.PI * 0.25);
+  physAddShape(phys, solidCreate(mesh), { x: 0.0, y: 0.0 }, 0.0, {x: 0.0, y: 0.0 }, -Math.PI * 0. 5);
 
   camClear(camera);
   physDraw(phys, camera);

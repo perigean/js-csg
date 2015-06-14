@@ -1,4 +1,6 @@
-
+// camera.js
+//
+// Copywrite Charles Dick 2015
 
 function camCreate(canvas) {
   var ctx = canvas.getContext('2d');

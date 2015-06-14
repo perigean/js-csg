@@ -1,3 +1,6 @@
+// phys.js
+//
+// Copywrite Charles Dick 2015
 //
 // tracks a physical system of body and particle objects that can interact
 //
@@ -61,7 +64,7 @@ function physTimeStep(phys, dt) {
       var rotations = Math.ceil(-body.θ / (2.0 * Math.PI));
       body.θ += rotations * 2.0 * Math.PI;
     } else if (body.θ >= 2.0 * Math.PI) {
-      var rotations = Math.floor(-body.θ / (2.0 * Math.PI));
+      var rotations = Math.ceil(-body.θ / (2.0 * Math.PI));
       body.θ += rotations * 2.0 * Math.PI;
     }
 

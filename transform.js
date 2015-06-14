@@ -1,3 +1,7 @@
+// transform.js
+//
+// Copywrite Charles Dick 2015
+
 // TODO: unit tests, it will suck if there is a typo in here, so find it first!
 
 // TODO: put vertex functions somewhere else or rename this module
