@@ -15,18 +15,26 @@ function physCreate() {
 }
 
 function physAddShape(phys, solid, d, θ, v, ω) {
-
-  // TODO: recentre bsp solid around its centre of mass
+  var l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
   var ca = solidCentroidArea(solid);
   var centerT = transformTranslateCreate(-ca.x, -ca.y);
 
+  // recenter solid to have centroid be at (0, 0)
   solidTransform(solid, centerT);
-  d.x += ca.x;
-  d.y += ca.y;
 
-  var l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
-  var w2l = transformInvert(l2w);
+  // get centroid in world coordinatea
+  transformPoint(l2w, ca);
+
+  // correct velocity due to movement caused by rotation of new center of mass
+  v.x += (d.y - ca.y) * ω;
+  v.y += (ca.x - d.x) * ω;
+
+  // correct position to be world coordinated of center of mass
+  d.x = ca.x;
+  d.y = ca.y;
+
+  l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
   phys.bodies.push({
     solid: solid,
@@ -34,7 +42,7 @@ function physAddShape(phys, solid, d, θ, v, ω) {
     θ: θ,
     v: v,
     ω: ω,
-    worldToLocal: w2l,
+    worldToLocal: transformInvert(l2w),
     localToWorld: l2w
   });
 }
@@ -74,41 +82,42 @@ function physTimeStep(phys, dt) {
 }
 
 function physClipBodies(phys, bsp) {
-  for (var i = 0; i < phys.bodies.length; i++) {
-    var body = phys.bodies[i];
-    // TODO: bounding circles or something...
-    // transform bsp into local coordinates
+  var bodies = phys.bodies;
+  phys.bodies = [];
 
+  for (var i = 0; i < bodies.length; i++) {
+    var body = bodies[i];
+    // TODO: bounding circles or something...
+
+    // transform bsp into local coordinates
     var localBsp = bspTreeTransformClone(bsp, body.worldToLocal)
     var result = solidClip(body.solid, localBsp);
 
-    if (result.clipped) {
-      body.solid = result.solid;
+    if (!result.clipped) {
+      phys.bodies.push(body);
+    } else {
+      var solid = result.solid;
+      var regions = solidMarkConnectedRegions(result.solid);
 
-      // recentre based on subtracted shape
-      var ca = solidCentroidArea(body.solid);
-      var centerT = transformTranslateCreate(-ca.x, -ca.y);
-
-      solidTransform(body.solid, centerT);
-
-      // convert new center to world coordinates to update our position
-      transformPoint(body.localToWorld, ca);
-
-      // new center of mass is moving due to old rotation, update velocity
-      // due to this change
-
-      var dv = physBodyVelocity(body, ca);
-
-      body.d.x = ca.x;
-      body.d.y = ca.y;
-      body.v.x += dv.x;
-      body.v.y += dv.y;
-
-      // recompute transforms with new position
-      body.localToWorld = transformTranslate(transformRotateCreate(body.θ), body.d.x, body.d.y);
-      body.worldToLocal = transformInvert(body.localToWorld);
+      for (var j = 0; j < regions; j++) {
+        var extractedSolid = solidExtractRegion(solid, j);
+        physAddShape(
+          phys,
+          extractedSolid,
+          { x: body.d.x, y: body.d.y },
+          body.θ,
+          { x: body.v.x, y: body.v.y },
+          body.ω);
+      }
     }
   }
+/*
+    var regions = solidMarkConnectedRegions(result.solid);
+
+    if (regions != 1) {
+      // TODO: stuff
+    }
+*/
 }
 
 function physDraw(phys, cam) {

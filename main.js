@@ -29,7 +29,7 @@ var bspTestTopRight = {px: 0, py: 0, nx: 1, ny: 0,
     out: null },
   out: null };
 
-var mesh = meshCreate([{ x: 0, y: 0 },{ x: 128, y: 0 },{ x: 128, y: 128 },{ x: 0, y: 128 }]);
+var mesh = meshCreate([{ x: -64, y: -64 },{ x: 64, y: -64 },{ x: 64, y: 64 },{ x: -64, y: 64 }]);
 
 var frame = 0;
 function renderLoop(timeStamp) {
@@ -50,7 +50,7 @@ function main() {
   log = document.getElementById('log');
 
   phys = physCreate();
-  physAddShape(phys, solidCreate(mesh), { x: 0.0, y: 0.0 }, 0.0, {x: 0.0, y: 0.0 }, -Math.PI * 0. 5);
+  physAddShape(phys, solidCreate(mesh), { x: 0.0, y: 0.0 }, 0.0, {x: 0.0, y: 0.0 }, -Math.PI * 0.5);
 
   camClear(camera);
   physDraw(phys, camera);
@@ -64,12 +64,9 @@ function main() {
     log.innerHTML += "frame " + frame + ": (" + p.x + ", " + p.y + ") <br />";
 
     var t = transformTranslateCreate(p.x, p.y);
-    var bsp = bspTreeTransformClone(bspTestRight, t);
+    var bsp = bspTreeTransformClone(bspTestSquare, t);
 
     physClipBodies(phys, bsp);
-
-    camClear(camera);
-    physDraw(phys, camera);
   };
 
 };

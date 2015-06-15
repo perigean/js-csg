@@ -5,7 +5,11 @@
 // depends on transform.js
 // depends on bsp.js
 
-// TODO: be consistent with how we use bsp and bspTree
+// TODO: maintain property that all branches before poly have both in and out
+// sub trees
+
+// TODO: clip can create new non-linked edges on existing poly, which will mess up their
+// bspTree (only on separation of non-connected?)
 
 function solidCreate(poly) {
     var solid = null;
@@ -25,7 +29,8 @@ function solidCreate(poly) {
           ny: next.x - i.x,
           in: solid,
           out: null,
-          poly: null};
+          poly: null
+        };
       }
 
       i = next;
@@ -42,11 +47,85 @@ function solidCreate(poly) {
         ny: i.next.x - i.x,
         in: null,
         out: null,
-        poly: poly};
+        poly: poly
+      };
     }
 
     solid.poly = poly;
     return solid;
+}
+
+function solidSetFlag(solid, flag) {
+  if (solid == null) {
+    return;
+  }
+
+  if (solid.poly != null) {
+    meshPolySetFlag(solid.poly, flag);
+  } else {
+    solidSetFlag(solid.in, flag);
+    solidSetFlag(solid.out, flag);
+  }
+}
+
+function solidMarkConnectedRegionsHelper(solid, nextFlag) {
+  if (solid == null) {
+    return nextFlag;
+  }
+
+  if (solid.poly != null) {
+    if (solid.poly.flag == -1) {
+      meshSetFlag(solid.poly, nextFlag);
+      return nextFlag + 1;
+    } else {
+      return nextFlag;
+    }
+  } else {
+    nextFlag = solidMarkConnectedRegionsHelper(solid.in, nextFlag);
+    nextFlag = solidMarkConnectedRegionsHelper(solid.out, nextFlag);
+    return nextFlag;
+  }
+}
+
+function solidMarkConnectedRegions(solid) {
+  solidSetFlag(solid, -1);
+  return solidMarkConnectedRegionsHelper(solid, 0);
+}
+
+function solidExtractRegion(solid, flag) {
+  if (solid == null) {
+    return null;
+  }
+
+  if (solid.poly != null) {
+    if (solid.poly.flag == flag) {
+      // need to recreate, since we don't know if we will keep higher splits that
+      // cover our unlinked edges that never got a split of their own
+      return solidCreate(solid.poly);
+    } else {
+      return null;
+    }
+  } else {
+    var inSolid = solidExtractRegion(solid.in, flag);
+    var outSolid = solidExtractRegion(solid.out, flag);
+
+    if (inSolid != null && outSolid != null) {
+      // we need this branch, copy it
+      return {
+        px: solid.px,
+        py: solid.py,
+        nx: solid.nx,
+        ny: solid.ny,
+        in: inSolid,
+        out: outSolid,
+        poly: null
+      };
+    } else if (inSolid != null) {
+      return inSolid;
+    } else {
+      return outSolid;  // could be null
+    }
+  }
 }
 
 function solidTransform(solid, t) {
@@ -69,13 +148,6 @@ function solidTransform(solid, t) {
     } while (i != poly);
   }
 }
-
-function solidEmpty(solid) {
-  return solid != null && solid.poly == null && solid.in == null && solid.out == null;
-}
-
-// TODO: what does this actually do? always modify solid unless there is no clipping
-// if left with a poly, we should overwrite solid?
 
 // return { clipped: <bool>, solid: <solid> }
 
@@ -173,6 +245,7 @@ function solidPolyClip(solid, bspTree) {
     }
 
     if (inResult.clipped || outResult.clipped) {
+      // TODO: don't create a split if it doesn't have both children
       return {
         clipped: true,
         solid: {

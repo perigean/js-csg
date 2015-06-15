@@ -31,6 +31,29 @@ function meshEdgeVerify(edge) {
   }
 }
 
+function meshPolySetFlag(poly, flag) {
+  var i = poly;
+
+  do {
+    i.flag = flag;
+    i = i.next;
+  } while (i != poly);
+}
+
+function meshSetFlag(mesh, flag) {
+  var i = mesh;
+
+  while (i.flag != flag) {
+    i.flag = flag;
+
+    if (i.link != null) {
+      meshSetFlag(i.link, flag);
+    }
+
+    i = i.next;
+  }
+}
+
 function meshPolyVerify(poly) {
   var i = poly;
 
@@ -60,6 +83,7 @@ function meshCreate(verts) {
   var head = {
     x: verts[0].x,
     y: verts[0].y,
+    flag: 0,
     prev: null,
     next: null,
     link: null
@@ -71,6 +95,7 @@ function meshCreate(verts) {
     tail.next = {
       x: verts[i].x,
       y: verts[i].y,
+      flag: 0,
       prev: tail,
       next: null,
       link: null
@@ -99,6 +124,7 @@ function meshEdgeSplit(edge, bsp) {
   var newEdge = {
     x: t * edge.x + (1.0 - t) * next.x,
     y: t * edge.y + (1.0 - t) * next.y,
+    flag: edge.flag,
     prev: edge,
     next: edge.next,
     link: link
@@ -111,6 +137,7 @@ function meshEdgeSplit(edge, bsp) {
     var newLink = {
       x: newEdge.x,
       y: newEdge.y,
+      flag: edge.flag,
       prev: link,
       next: link.next,
       link: edge
@@ -193,6 +220,7 @@ function meshPolySplit(a, b) {
   var newA = {
     x: a.x,
     y: a.y,
+    flag: a.flag,
     prev: b,
     next: a.next,
     link: a.link
@@ -201,6 +229,7 @@ function meshPolySplit(a, b) {
   var newB = {
     x: b.x,
     y: b.y,
+    flag: b.flag,
     prev: a,
     next: b.next,
     link: b.link
