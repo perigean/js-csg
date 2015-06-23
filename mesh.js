@@ -328,6 +328,15 @@ function meshPolyCentroidArea(poly) {
   return { x: cx / (3.0 * a), y: cy / (3.0 * a), area: a * 0.5 }
 }
 
+function meshPolyRadiusSquared(poly) {
+  var i = poly;
+  var r = 0.0;
+  do {
+    r = Math.max(r, i.x * i.x + i.y * i.y);
+  } while (i != poly);
+
+  return r;
+}
 
 function meshEdgeTransform(edge, t) {
   var x = edge.x * t.ix + edge.y * t.jx + t.dx;
