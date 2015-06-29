@@ -328,6 +328,33 @@ function meshPolyCentroidArea(poly) {
   return { x: cx / (3.0 * a), y: cy / (3.0 * a), area: a * 0.5 }
 }
 
+// see https://en.wikipedia.org/wiki/List_of_moments_of_inertia
+function meshPolyMomentOfInertia(poly) {
+  var i = poly;
+
+  var prevX = i.prev.x;
+  var prevY = i.prev.y;
+
+  var num = 0.0;
+  var den = 0.0;
+
+  do {
+    var cross = i.x * prevY - i.y * prevX;
+
+    den += cross;
+    num += cross * (
+      i.x * i.x + i.y * i.y +
+      i.x * prevX + i.y * prevY +
+      prevX * prevX + prevY * prevY);
+
+    prevX = i.x;
+    prevY = i.y;
+    i = i.next;
+  } while (i != poly);
+
+  return num / (6.0 * den);
+}
+
 function meshPolyRadiusSquared(poly) {
   var i = poly;
   var r = 0.0;

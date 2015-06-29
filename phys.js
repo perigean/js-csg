@@ -7,16 +7,68 @@
 
 // requires bsp.js, transform.js, camera.js
 
-function physCreate() {
+function physCreate(dt) {
   return {
     bodies: [],
     particles: new Array(65536),
-    numParticles: 0
+    numParticles: 0,
+    dt: dt
   };
   // TODO: acceleration structures etc.
 }
 
-function physAddShape(phys, solid, d, θ, v, ω) {
+function physBodyRelativeVelocity(body, p, v) {
+  var dBody = body.d;
+  var vBody = body.v;
+  var ωBody = body.ω;
+
+  var vx = vBody.x + (dBody.y - p.y) * ωBody;
+  var vy = vBody.y + (p.x - dBody.x) * ωBody;
+
+  v.x -= vx;
+  v.y -= vy;
+}
+
+function physBodyApplyImpulse(body, p, n, j) {
+  // apply impulse to center of mass and update rotation based on cross product?
+  // or dot product
+
+  var dx = body.d.x - p.x;  // p -> body.d
+  var dy = body.d.y - p.y;
+
+  // update translational velocity
+  body.v.x += n.x * j / body.m;
+  body.v.y += n.y * j / body.m;
+
+  // update rotational velocity
+  body.ω += (n.x * dy - n.y * dx) * j / body.I;
+}
+
+// velocity change at p in direction of n per unit of impulse applied at
+// p in direction of n
+function physBodyDvByDj(body, p, n) {
+  var nl2 = n.x * n.x + n.y * n.y;
+  if (nl2 < 0.9999 || nl2 > 1.0001) {
+    throw "normal must be a unit vector";
+  }
+
+  var dx = body.d.x - p.x;  // p -> body.d
+  var dy = body.d.y - p.y;
+
+  // delta's to velocity components
+  var dvx = n.x / body.m;
+  var dvy = n.y / body.m;
+  var dω = (n.x * dy - n.y * dx) / body.I;
+
+  // change in velocity at point p
+  var vx = dvx + dy * dω;
+  var vy = dvy - dx * dω;
+
+  // project onto normal
+  return n.x * vx + n.y * vy;
+}
+
+function physAddShape(phys, solid, ρ, d, θ, v, ω) {
   var l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
   var ca = solidCentroidArea(solid);
@@ -43,19 +95,25 @@ function physAddShape(phys, solid, d, θ, v, ω) {
 
   phys.bodies.push({
     solid: solid,
+    ρ: ρ,
+    m: ρ * ca.area,
+    I: ρ * ca.area * solidMomentOfInertia(solid),
     d: d,
     r2: r2,
     θ: θ,
     v: v,
     ω: ω,
     worldToLocal: transformInvert(l2w),
-    localToWorld: l2w
+    localToWorld: l2w,
+    prevWorldToLocal: transformInvert(l2w), // TODO: how to account for previous location of split shape
+    prevLocalToWorld: l2w
   });
 }
 
-function physAddParticle(phys, d, v, t) {
+function physAddParticle(phys, m, d, v, t) {
   if (phys.numParticles < phys.particles.length) {
     phys.particles[phys.numParticles] = {
+      m: m,
       d: d,
       v: v,
       t: t
@@ -78,22 +136,62 @@ function physRemoveParticle(phys, i) {
   phys.particles[phys.numParticles] = null;
 }
 
-function physTimeStep(phys, dt) {
-  var particles = phys.particles;
-  for (var i = 0; i < phys.numParticles; i++) {
-    var particle = particles[i];
-    particle.t -= dt;
-    particle.d.x += particle.v.x * dt;
-    particle.d.y += particle.v.y * dt;
-  }
+function physFirstCollision(phys, curr, prev, n) {
+  // TODO: use bounding circle - might need prevD on body
+  var hitBody = null;
+  for (var i = 0; i < phys.bodies.length; i++) {
+    var body = phys.bodies[i];
+    var a = { x: prev.x, y: prev.y };
+    var b = { x: curr.x, y: curr.y };
+    transformPoint(body.prevWorldToLocal, a);
+    transformPoint(body.worldToLocal, b);
 
-  for (var i = 0; i < phys.numParticles;) {
-    if (particles[i].t <= 0.0) {
-      physRemoveParticle(phys, i);
-    } else {
-      i++;
+    var bsp = bspTreeIntersect(body.solid, a.x, a.y, b.x, b.y);
+    if (bsp != null) {
+      var t = bspIntersect(bsp, a.x, a.y, b.x, b.y);
+      var nl = Math.sqrt(bsp.nx * bsp.nx + bsp.ny * bsp.ny);
+
+      hitBody = body;
+      curr.x = prev.x * t + curr.x * (1.0 - t);
+      curr.y = prev.y * t + curr.y * (1.0 - t);
+      n.x = bsp.nx / nl;
+      n.y = bsp.ny / nl;
+      transformNormal(body.localToWorld, n);
     }
   }
+
+  return hitBody;
+}
+
+function physCollideParticle(phys, particle, prev) {
+  var n = { x: 0.0, y: 0.0 };
+  var body = physFirstCollision(phys, particle.d, prev, n);
+
+  if (body != null) { // particle hit something
+    var vRel = { x: particle.v.x, y: particle.v.y };
+    physBodyRelativeVelocity(body, particle.d, vRel);
+    var v = vRel.x * n.x + vRel.y * n.y;  // velocity in direction of (inward) normal at collision point
+
+    if (v > 0.0) {  // actually converging at collision point
+      var dv = -v * (1.0 + 0.9); // TODO: coefficient of restitution taken from somewhere
+
+      // calculate change in velocity per unit of impulse
+      var bodyDvDj = physBodyDvByDj(body, particle.d, n);
+      var partDvDj = 1.0 / particle.m;
+
+      var j = dv / (bodyDvDj + partDvDj);
+
+      physBodyApplyImpulse(body, particle.d, n, -j);
+      particle.v.x += n.x * j / particle.m;
+      particle.v.y += n.y * j / particle.m;
+    } else {
+      throw "colliding but not moving towards each other?";
+    }
+  }
+}
+
+function physTimeStep(phys) {
+  var dt = phys.dt;
 
   for (var i = 0; i < phys.bodies.length; i++) {
     var body = phys.bodies[i];
@@ -113,12 +211,35 @@ function physTimeStep(phys, dt) {
       body.θ += rotations * 2.0 * Math.PI;
     }
 
+    // TODO: collision detection
+
+    body.prevWorldToLocal = body.worldToLocal;
+    body.prevLocalToWorld = body.localToWorld;
     body.localToWorld = transformTranslate(transformRotateCreate(body.θ), body.d.x, body.d.y);
     body.worldToLocal = transformInvert(body.localToWorld);
   }
 
-  // check for collisions? Do particles first?
-  // how to do everything at once? Update next transform first, do collisions, then update?
+  var particles = phys.particles;
+  for (var i = 0; i < phys.numParticles; i++) {
+    var particle = particles[i];
+    var prev = { x: particle.d.x, y: particle.d.y };
+    var hitBody = null;
+
+    particle.t -= dt;
+    particle.d.x += particle.v.x * dt;
+    particle.d.y += particle.v.y * dt;
+
+    physCollideParticle(phys, particle, prev);
+  }
+
+  // remove any particles that have timed out
+  for (var i = 0; i < phys.numParticles;) {
+    if (particles[i].t <= 0.0) {
+      physRemoveParticle(phys, i);
+    } else {
+      i++;
+    }
+  }
 }
 
 function physClipBodies(phys, bsp) {
@@ -141,9 +262,11 @@ function physClipBodies(phys, bsp) {
 
       for (var j = 0; j < regions; j++) {
         var extractedSolid = solidExtractRegion(solid, j);
+
         physAddShape(
           phys,
           extractedSolid,
+          body.ρ,
           { x: body.d.x, y: body.d.y },
           body.θ,
           { x: body.v.x, y: body.v.y },
@@ -193,8 +316,11 @@ function physDrawcollisionDebugGrid(phys, cam) {
       transformPoint(body.worldToLocal, a);
       transformPoint(body.worldToLocal, b);
 
-      var t = bspTreeIntersect(body.solid, a.x, a.y, b.x, b.y);
-      line.t = Math.min(line.t, t);
+      var bsp = bspTreeIntersect(body.solid, a.x, a.y, b.x, b.y);
+      if (bsp != null) {
+        var t = bspIntersect(bsp, b.x, b.y, a.x, a.y);
+        line.t = Math.min(line.t, t);
+      }
     }
   }
 
@@ -214,7 +340,7 @@ function physDraw(phys, cam) {
   for (var i = 0; i < phys.numParticles; i++) {
     var particle = phys.particles[i];
 
-    ctx.fillRect(particle.d.x, particle.d.y, 1, 1);
+    ctx.fillRect(particle.d.x - 1.0, particle.d.y - 1.0, 3.0, 3.0);
   }
 
   for (var i = 0; i < phys.bodies.length; i++) {
@@ -239,5 +365,5 @@ function physDraw(phys, cam) {
     camPopTransform(cam);
   }
 
-  physDrawcollisionDebugGrid(phys, cam);
+  //physDrawcollisionDebugGrid(phys, cam);
 }

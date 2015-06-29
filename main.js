@@ -22,9 +22,9 @@ var bspTestRight = {px: 0, py: 0, nx: 1, ny: 0,
   out: null
   };
 
-var bspTestCut = {px: 1, py: 0, nx: 1, ny: 0,
+var bspTestCut = {px: 4, py: 0, nx: 1, ny: 0,
   in: null,
-  out: {px: -1, py: 0, nx: -1, ny: 0,
+  out: {px: -4, py: 0, nx: -1, ny: 0,
     in: null,
     out: null
     }
@@ -49,9 +49,7 @@ function renderNextFrame() {
 
   // TODO: decouple frame rate and phys time step
 
-  physTimeStep(phys, 0.016666667);
-
-  physAddParticle(phys, { x: 0.0, y: 0.0 }, { x: Math.cos(time) * 128, y: Math.sin(time) * 128 }, 1.0);
+  physTimeStep(phys);
 
   camClear(camera);
   physDraw(phys, camera);
@@ -90,8 +88,8 @@ function main() {
   camera = camCreate(canvas);
   log = document.getElementById('log');
 
-  phys = physCreate();
-  physAddShape(phys, solidCreate(mesh), { x: 0.0, y: 0.0 }, 0.0, {x: 0.0, y: 0.0 }, -Math.PI * 0.5);
+  phys = physCreate(0.016666667);
+  physAddShape(phys, solidCreate(mesh), 1.0, { x: 0.0, y: 0.0 }, 0.0, {x: 0.0, y: 0.0 }, Math.PI * 0.5);
 
   camClear(camera);
   physDraw(phys, camera);
@@ -100,12 +98,26 @@ function main() {
     var p = { x: evt.offsetX, y: evt.offsetY };
     camScreenToWorld(camera, p);
 
-    log.innerHTML += "frame " + frame + ": (" + p.x + ", " + p.y + ") <br />";
+    if (evt.shiftKey) {
+      log.innerHTML += "frame " + frame + ": shotgun (" + p.x + ", " + p.y + ") <br />";
 
-    var t = transformTranslateCreate(p.x, p.y);
-    var bsp = bspTreeTransformClone(bspTestSquare, t);
+      for (var i = 0; i < 20; i++) {
+        var r = Math.random() * 16;
+        var a = Math.random() * Math.PI * 2.0;
+        var d = { x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r };
 
-    physClipBodies(phys, bsp);
+        physAddParticle(phys, 10.0, d, { x: 256.0, y: 0.0 }, 2.0);
+      }
+
+
+    } else {
+      log.innerHTML += "frame " + frame + ": subtract (" + p.x + ", " + p.y + ") <br />";
+
+      var t = transformTranslateCreate(p.x, p.y);
+      var bsp = bspTreeTransformClone(bspTestCut, t);
+
+      physClipBodies(phys, bsp);
+    }
 
     if (playing == 0) {
       camClear(camera);

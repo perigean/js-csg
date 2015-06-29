@@ -339,6 +339,19 @@ function solidCentroidArea(solid) {
   }
 }
 
+function solidMomentOfInertia(solid) {
+  if (solid == null) {
+    return 0.0;
+  } else if (solid.poly != null) {
+    // Leaf step, found a polygon
+    return meshPolyMomentOfInertia(solid.poly);
+  } else {
+    // We can just add together because everything is using the same axis of
+    // rotation (the origin)
+    return solidMomentOfInertia(solid.in) + solidMomentOfInertia(solid.out);
+  }
+}
+
 function solidRadiusSquared(solid) {
   if (solid == null) {
     return 0.0;
