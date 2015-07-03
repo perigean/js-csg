@@ -90,6 +90,7 @@ function bspTreeIntersectRecurse(bspTree, ax, ay, bx, by, aBsp) {
     return bspTree.in != null ? bspTreeIntersectRecurse(bspTree.in, ax, ay, bx, by, aBsp) : aBsp;
   } else {  // crossing
     var t = bspIntersect(bspTree, ax, ay, bx, by);
+
     var cx = t * ax + (1.0 - t) * bx;
     var cy = t * ay + (1.0 - t) * by;
 

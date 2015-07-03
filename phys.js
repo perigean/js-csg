@@ -17,6 +17,12 @@ function physCreate(dt) {
   // TODO: acceleration structures etc.
 }
 
+function physReset(phys) {
+  phys.bodies = [];
+  phys.numParticles = 0;
+  globalphysId = 0;
+}
+
 function physBodyRelativeVelocity(body, p, v) {
   var dBody = body.d;
   var vBody = body.v;
@@ -68,6 +74,8 @@ function physBodyDvByDj(body, p, n) {
   return n.x * vx + n.y * vy;
 }
 
+var globalphysId = 0;
+
 function physAddShape(phys, solid, ρ, d, θ, v, ω) {
   var l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
@@ -94,6 +102,7 @@ function physAddShape(phys, solid, ρ, d, θ, v, ω) {
   l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
   phys.bodies.push({
+    id: globalphysId++,
     solid: solid,
     ρ: ρ,
     m: ρ * ca.area,
@@ -113,6 +122,7 @@ function physAddShape(phys, solid, ρ, d, θ, v, ω) {
 function physAddParticle(phys, m, d, v, t) {
   if (phys.numParticles < phys.particles.length) {
     phys.particles[phys.numParticles] = {
+      id: globalphysId++,
       m: m,
       d: d,
       v: v,
@@ -148,7 +158,7 @@ function physFirstCollision(phys, curr, prev, n) {
 
     var bsp = bspTreeIntersect(body.solid, a.x, a.y, b.x, b.y);
     if (bsp != null) {
-      var t = bspIntersect(bsp, a.x, a.y, b.x, b.y);
+      var t = Math.min(Math.max(bspIntersect(bsp, a.x, a.y, b.x, b.y), 0.0), 1.0);
       var nl = Math.sqrt(bsp.nx * bsp.nx + bsp.ny * bsp.ny);
 
       hitBody = body;
@@ -184,8 +194,6 @@ function physCollideParticle(phys, particle, prev) {
       physBodyApplyImpulse(body, particle.d, n, -j);
       particle.v.x += n.x * j / particle.m;
       particle.v.y += n.y * j / particle.m;
-    } else {
-      throw "colliding but not moving towards each other?";
     }
   }
 }
@@ -230,6 +238,16 @@ function physTimeStep(phys) {
     particle.d.y += particle.v.y * dt;
 
     physCollideParticle(phys, particle, prev);
+
+    for (var j = 0; j < phys.bodies.length; ++j) {
+      var body = phys.bodies[j];
+      var local = { x: particle.d.x, y: particle.d.y };
+      transformPoint(body.worldToLocal, local);
+
+      if (bspTreeIn(body.solid, local.x, local.y)) {
+        throw "point in body after time step!";
+      }
+    }
   }
 
   // remove any particles that have timed out
@@ -337,12 +355,6 @@ function physDrawcollisionDebugGrid(phys, cam) {
 function physDraw(phys, cam) {
   var ctx = cam.ctx;
 
-  for (var i = 0; i < phys.numParticles; i++) {
-    var particle = phys.particles[i];
-
-    ctx.fillRect(particle.d.x - 1.0, particle.d.y - 1.0, 3.0, 3.0);
-  }
-
   for (var i = 0; i < phys.bodies.length; i++) {
     var body = phys.bodies[i];
 
@@ -363,6 +375,18 @@ function physDraw(phys, cam) {
     ctx.stroke();
 
     camPopTransform(cam);
+  }
+
+  for (var i = 0; i < phys.numParticles; i++) {
+    var particle = phys.particles[i];
+
+    if (particle.id == 20) {
+      ctx.fillStyle = 'red';
+    } else {
+      ctx.fillStyle = 'darkblue';
+    }
+
+    ctx.fillRect(particle.d.x - 0.5, particle.d.y - 0.5, 1.0, 1.0);
   }
 
   //physDrawcollisionDebugGrid(phys, cam);

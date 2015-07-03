@@ -4,7 +4,6 @@
 
 var camera;
 var log;
-var phys;
 
 var bspTestSquare = { px: 0, py: 0, nx: 1, ny: 1,
     in: { px: 0, py: 16, nx: 0, ny: 1,
@@ -37,22 +36,21 @@ var bspTestTopRight = {px: 0, py: 0, nx: 1, ny: 0,
     out: null },
   out: null };
 
-var mesh = meshCreate([{ x: -64, y: -64 },{ x: 64, y: -64 },{ x: 64, y: 64 },{ x: -64, y: 64 }]);
-
 var playing = 0;
-var frame = 0;
-var time = 0.0;
 
-function renderNextFrame() {
-  frame++;
-  time += 0.016666667;
+var phys = physCreate(0.016666667);
+var rec;
 
-  // TODO: decouple frame rate and phys time step
-
-  physTimeStep(phys);
-
+function render() {
   camClear(camera);
   physDraw(phys, camera);
+}
+
+function renderNextFrame() {
+  // TODO: decouple frame rate and phys time step
+
+  recorderNextFrame(rec);
+  render();
 }
 
 function renderLoop(timeStamp) {
@@ -84,39 +82,45 @@ function main() {
   var canvas = document.getElementById('canvas');
   var pp = document.getElementById("playpause");
   var nf = document.getElementById("nextframe");
+  var rp = document.getElementById("replay");
+  pp.onclick = playPause;
+  nf.onclick = nextFrame;
+  rp.onclick = function (evt) {
+    recorderReplay(rec);
+    camClear(camera);
+    physDraw(phys, camera);
+  }
 
-  camera = camCreate(canvas);
-  log = document.getElementById('log');
+  rec = recorderCreate(phys, document.getElementById('log'));
+  recorderAddShape(rec,
+    [{ x: -64, y: -64 },{ x: 64, y: -64 },{ x: 64, y: 64 },{ x: -64, y: 64 }],
+    1.0,                                // density
+    { x: 0.0, y: 0.0 }, 0.0,            // position
+    {x: 0.0, y: 0.0 }, 3.14);  // velocity
 
-  phys = physCreate(0.016666667);
-  physAddShape(phys, solidCreate(mesh), 1.0, { x: 0.0, y: 0.0 }, 0.0, {x: 0.0, y: 0.0 }, Math.PI * 0.5);
-
+  camera = camCreate(canvas, render);
   camClear(camera);
   physDraw(phys, camera);
 
   canvas.onclick = function (evt) {
     var p = { x: evt.offsetX, y: evt.offsetY };
-    camScreenToWorld(camera, p);
+    camCameraToModel(camera, p);
 
     if (evt.shiftKey) {
-      log.innerHTML += "frame " + frame + ": shotgun (" + p.x + ", " + p.y + ") <br />";
-
       for (var i = 0; i < 20; i++) {
-        var r = Math.random() * 16;
+        var r = Math.random() * 8;
         var a = Math.random() * Math.PI * 2.0;
         var d = { x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r };
 
-        physAddParticle(phys, 10.0, d, { x: 256.0, y: 0.0 }, 2.0);
+        recorderAddParticle(rec, 10.0, d, { x: 256.0, y: 0.0 }, 5.0);
       }
 
 
     } else {
-      log.innerHTML += "frame " + frame + ": subtract (" + p.x + ", " + p.y + ") <br />";
-
       var t = transformTranslateCreate(p.x, p.y);
-      var bsp = bspTreeTransformClone(bspTestCut, t);
+      var bsp = bspTreeTransformClone(bspTestSquare, t);
 
-      physClipBodies(phys, bsp);
+      recorderClipBodies(rec, bsp);
     }
 
     if (playing == 0) {
@@ -124,7 +128,4 @@ function main() {
       physDraw(phys, camera);
     }
   };
-
-  pp.onclick = playPause;
-  nf.onclick = nextFrame;
 };
