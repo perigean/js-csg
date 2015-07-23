@@ -156,15 +156,20 @@ function physFirstCollision(phys, curr, prev, n) {
     transformPoint(body.prevWorldToLocal, a);
     transformPoint(body.worldToLocal, b);
 
-    var t = bspTreeIntersect(body.solid, a.x, a.y, b.x, b.y);
-    if (t < 1.0) {
+    var bsp = bspTreeCollide(body.solid, a.x, a.y, b.x, b.y);
+
+    if (bsp != null) {
+      var t = bspIntersect(bsp, a.x, a.y, b.x, b.y);
+
       hitBody = body;
 
-      a.x = a.x * (1.0 - t) + b.x * t;
-      a.y = a.y * (1.0 - t) + b.y * t;
-      if (!bspTreeIntersectionNormal(body.solid, a.x, a.y, b.x, b.y, n)) {
-        throw "couldn't find intersection normal!";
-      }
+      //a.x = a.x * (1.0 - t) + b.x * t;
+      //a.y = a.y * (1.0 - t) + b.y * t;
+      // TODO: use position just outside body for particle, check to make sure it's not in some other body
+
+      var nl = Math.sqrt(bsp.nx * bsp.nx + bsp.ny * bsp.ny);
+      n.x = bsp.nx / nl;
+      n.y = bsp.ny / nl;
 
       curr.x = a.x;
       curr.y = a.y;
@@ -323,7 +328,17 @@ function physDrawcollisionDebugGrid(phys, cam) {
       transformPoint(body.worldToLocal, a);
       transformPoint(body.worldToLocal, b);
 
-      line.t = Math.min(line.t, bspTreeIntersect(body.solid, a.x, a.y, b.x, b.y));
+      try {
+        var bsp = bspTreeCollide(body.solid, a.x, a.y, b.x, b.y);
+
+        if (bsp != null) {
+          line.t = Math.min(line.t, bspIntersect(bsp, b.x, b.y, a.x, a.y));
+        }
+      }
+      catch (ex)
+      {
+
+      }
     }
   }
 
@@ -350,7 +365,7 @@ function physDraw(phys, cam) {
     camPushTransform(cam, body.localToWorld);
 
     solidFill(body.solid, camera.ctx);
-    //solidStroke(body.solid, camera.ctx);
+    solidStroke(body.solid, camera.ctx);
 
     ctx.beginPath();
     ctx.arc(0.0, 0.0, 4, 0, 2 * Math.PI, false);
@@ -369,13 +384,7 @@ function physDraw(phys, cam) {
   for (var i = 0; i < phys.numParticles; i++) {
     var particle = phys.particles[i];
 
-    if (particle.id == 17) {
-      ctx.fillStyle = 'red';
-    } else {
-      ctx.fillStyle = 'darkblue';
-    }
-
-    ctx.fillRect(particle.d.x - 0.5, particle.d.y - 0.5, 1.0, 1.0);
+    ctx.fillRect(particle.d.x - 1.5, particle.d.y - 1.5, 3.0, 3.0);
   }
 
   physDrawcollisionDebugGrid(phys, cam);

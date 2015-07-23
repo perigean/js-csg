@@ -64,9 +64,46 @@ function bspTreeIn(bspTree, x, y) {
   }
 }
 
-function bspTreeCollide(bspTree, inChild, beginBsp, ax, ay, bx, by) {
+function bspTreeCollideCross(bspTree, aChild, bChild, aIsInChild, beginBsp, ax, ay, bx, by) {
+  var t = bspIntersect(bspTree, ax, ay, bx, by);
+
+  if (!(t > 0.0 && t < 1.0)) {
+    throw "crossing segment not crossing";
+  }
+
+  var cx = t * ax + (1.0 - t) * bx;
+  var cy = t * ay + (1.0 - t) * by;
+
+  var res = bspTreeCollideRecurse(aChild, aIsInChild, beginBsp, ax, ay, cx, cy);
+
+  if (res != null) {
+    return res;
+  }
+
+  return bspTreeCollideRecurse(bChild, !aIsInChild, bspTree, cx, cy, bx, by);;
+}
+
+function bspTreeCollideTouch(bspTree, segmentChild, touchChild, segmentIsInChild, beginBsp, ax, ay, bx, by) {
+  var res = bspTreeCollideRecurse(segmentChild, segmentIsInChild, beginBsp, ax, ay, bx, by);
+
+  if (res != null) {
+    return res;
+  }
+
+  if (touchChild == null) {
+    if (touchChild == bspTree.in) {
+      return bspTree;
+    }
+  } else if (bspTreeIn(touchChild, bx, by)) {
+    return bspTree;
+  }
+
+  return null;
+}
+
+function bspTreeCollideRecurse(bspTree, isInChild, beginBsp, ax, ay, bx, by) {
   if (bspTree == null) {
-    if (inChild) {
+    if (isInChild) {
       if (beginBsp == null) {
         throw "segment is in, but has no begin split";
       }
@@ -80,30 +117,47 @@ function bspTreeCollide(bspTree, inChild, beginBsp, ax, ay, bx, by) {
 
   if (aSide < 0.0) {
     if (bSide < 0.0) {  // all out
-      return bspTreeCollide(bspTree.out, false, beginBsp, ax, ay, bx, by);
+      return bspTreeCollideRecurse(bspTree.out, false, beginBsp, ax, ay, bx, by);
     } else if (bSide > 0.0) { // crossing in
-      return bspTreeCollideCross(bspTree, bspTree.out, bspTree.in, beginBsp, ax, ay, bx, by);
+      return bspTreeCollideCross(bspTree, bspTree.out, bspTree.in, false, beginBsp, ax, ay, bx, by);
     } else {  // out, but touching in
-      return bspTreeCollideTouch(bspTree, bspTree.out, beginBsp, ax, ay, bx, by);
+      return bspTreeCollideTouch(bspTree, bspTree.out, bspTree.in, false, beginBsp, ax, ay, bx, by);
     }
   } else if (aSide > 0.0) {
     if (bSide < 0.0) {  // crossing out
-      return bspTreeCollideCross(bspTree, bspTree.in, bspTree.out, beginBsp, ax, ay, bx, by);
+      return bspTreeCollideCross(bspTree, bspTree.in, bspTree.out, true, beginBsp, ax, ay, bx, by);
     } else if (bSide > 0.0) { // all in
-      return bspTreeCollide(bspTree.in, true, beginBsp, ax, ay, bx, by);
+      return bspTreeCollideRecurse(bspTree.in, true, beginBsp, ax, ay, bx, by);
     } else {  // in, but touching out
-      return bspTreeCollideTouch(bspTree, bspTree.in, beginBsp, ax, ay, bx, by);
+      return bspTreeCollideTouch(bspTree, bspTree.in, bspTree.out, true, beginBsp, ax, ay, bx, by);
     }
   } else {  // if (aSide == 0.0)
     if (bSide < 0.0) {  // all out
-      return bspTreeCollide(bspTree.out, false, beginBsp, ax, ay, bx, by);
+      return bspTreeCollideRecurse(bspTree.out, false, beginBsp, ax, ay, bx, by);
     } else if (bSide > 0.0) { // all in
-      return bspTreeCollide(bspTree.in, true, beginBsp, ax, ay, bx, by);
+      return bspTreeCollideRecurse(bspTree.in, true, beginBsp, ax, ay, bx, by);
     } else {  // on split
-      // TODO: find first split
-      throw "not implemented yet!";
+      var iRes = bspTreeCollideRecurse(bspTree.in, true, beginBsp, ax, ay, bx, by);
+      var oRes = bspTreeCollideRecurse(bspTree.out, false, beginBsp, ax, ay, bx, by);
+
+      if (iRes != null && oRes != null) {
+        // find out which side hit first
+        if (bspIntersect(iRes, ax, ay, bx, by) > bspIntersect(oRes, ax, ay, bx, by)) {
+          return iRes;
+        } else {
+          return oRes;
+        }
+      } else if (iRes != null) {
+        return iRes;
+      } else {
+        return oRes;
+      }
     }
   }
+}
+
+function bspTreeCollide(bspTree, ax, ay, bx, by) {
+  return bspTreeCollideRecurse(bspTree, false, null, ax, ay, bx, by);
 }
 
 // no, check beginning
