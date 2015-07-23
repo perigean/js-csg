@@ -15,13 +15,12 @@ function camCreate(canvas, drawCallback) {
     ctx: ctx,
     worldToCamera: t,
     modelToWorld: [transformCreate()],
-    cameraToModel: transformInvert(t)
+    cameraToModel: transformInvert(t),
+    mouseModel: { x: 0.0, y: 0.0 },
+    mouseCamera: { x: 0.0, y: 0.0 }
   };
 
   canvas.onmousewheel = function (evt) {
-    var cameraToWorld = transformInvert(cam.worldToCamera);
-
-
     if (evt.shiftKey) {
       var scale = Math.log((-evt.deltaY / 500.0) + Math.E);
       var worldToCamera = cam.worldToCamera;
@@ -43,6 +42,17 @@ function camCreate(canvas, drawCallback) {
     return false;
   }
 
+  canvas.onmousemove = function (evt) {
+    cam.mouseCamera.x = evt.offsetX;
+    cam.mouseCamera.y = evt.offsetY;
+    cam.mouseModel.x = evt.offsetX;
+    cam.mouseModel.y = evt.offsetY;
+    transformPoint(cam.cameraToModel, cam.mouseModel);
+
+    drawCallback();
+  }
+
+
   return cam;
 }
 
@@ -55,6 +65,10 @@ function camRecompose(cam) {
     modelToCamera.ix, modelToCamera.iy,
     modelToCamera.jx, modelToCamera.jy,
     modelToCamera.dx, modelToCamera.dy);
+
+  cam.mouseModel.x = cam.mouseCamera.x;
+  cam.mouseModel.y = cam.mouseCamera.y;
+  transformPoint(cam.cameraToModel, cam.mouseModel);
 }
 
 function camPushTransform(cam, transform) {

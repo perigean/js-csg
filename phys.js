@@ -156,16 +156,24 @@ function physFirstCollision(phys, curr, prev, n) {
     transformPoint(body.prevWorldToLocal, a);
     transformPoint(body.worldToLocal, b);
 
-    var bsp = bspTreeIntersect(body.solid, a.x, a.y, b.x, b.y);
+    var bsp = bspTreeCollide(body.solid, a.x, a.y, b.x, b.y);
+
     if (bsp != null) {
-      var t = Math.min(Math.max(bspIntersect(bsp, a.x, a.y, b.x, b.y), 0.0), 1.0);
-      var nl = Math.sqrt(bsp.nx * bsp.nx + bsp.ny * bsp.ny);
+      var t = bspIntersect(bsp, a.x, a.y, b.x, b.y);
 
       hitBody = body;
-      curr.x = prev.x * t + curr.x * (1.0 - t);
-      curr.y = prev.y * t + curr.y * (1.0 - t);
+
+      //a.x = a.x * (1.0 - t) + b.x * t;
+      //a.y = a.y * (1.0 - t) + b.y * t;
+      // TODO: use position just outside body for particle, check to make sure it's not in some other body
+
+      var nl = Math.sqrt(bsp.nx * bsp.nx + bsp.ny * bsp.ny);
       n.x = bsp.nx / nl;
       n.y = bsp.ny / nl;
+
+      curr.x = a.x;
+      curr.y = a.y;
+      transformPoint(body.localToWorld, curr);
       transformNormal(body.localToWorld, n);
     }
   }
@@ -245,6 +253,7 @@ function physTimeStep(phys) {
       transformPoint(body.worldToLocal, local);
 
       if (bspTreeIn(body.solid, local.x, local.y)) {
+        var x = bspTreeIn(body.solid, local.x, local.y);
         throw "point in body after time step!";
       }
     }
@@ -297,28 +306,13 @@ function physClipBodies(phys, bsp) {
 function physDrawcollisionDebugGrid(phys, cam) {
   var ctx = cam.ctx;
   var grid = [];
-  for (var x = -128; x <= 128; x += 16) {
-    grid.push({
-      a: { x: x, y: -128 },
-      b: { x: x, y:  128 },
-      t: 1.0
-    });
 
-    grid.push({
-      a: { x: x, y:  128 },
-      b: { x: x, y: -128 },
-      t: 1.0
-    });
+  var p = cam.mouseModel;
 
+  for (var a = 0.0; a < 2.0 * Math.PI; a += 2.0 * Math.PI / 32.0) {
     grid.push({
-      a: { x: -128, y: x },
-      b: { x:  128, y: x },
-      t: 1.0
-    });
-
-    grid.push({
-      a: { x:  128, y: x },
-      b: { x: -128, y: x },
+      a: { x: p.x, y: p.y },
+      b: { x: p.x + Math.cos(a) * 64.0, y: p.y + Math.sin(a) * 64.0 },
       t: 1.0
     });
   }
@@ -334,10 +328,16 @@ function physDrawcollisionDebugGrid(phys, cam) {
       transformPoint(body.worldToLocal, a);
       transformPoint(body.worldToLocal, b);
 
-      var bsp = bspTreeIntersect(body.solid, a.x, a.y, b.x, b.y);
-      if (bsp != null) {
-        var t = bspIntersect(bsp, b.x, b.y, a.x, a.y);
-        line.t = Math.min(line.t, t);
+      try {
+        var bsp = bspTreeCollide(body.solid, a.x, a.y, b.x, b.y);
+
+        if (bsp != null) {
+          line.t = Math.min(line.t, bspIntersect(bsp, b.x, b.y, a.x, a.y));
+        }
+      }
+      catch (ex)
+      {
+
       }
     }
   }
@@ -349,7 +349,11 @@ function physDrawcollisionDebugGrid(phys, cam) {
     ctx.moveTo(line.a.x, line.a.y);
     ctx.lineTo(line.a.x * (1.0 - t) + line.b.x * t, line.a.y * (1.0 - t) + line.b.y * t);
   }
+  ctx.strokeStyle = 'grey';
+  ctx.lineWidth = 0.2;
   ctx.stroke();
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 1.0;
 }
 
 function physDraw(phys, cam) {
@@ -380,14 +384,8 @@ function physDraw(phys, cam) {
   for (var i = 0; i < phys.numParticles; i++) {
     var particle = phys.particles[i];
 
-    if (particle.id == 20) {
-      ctx.fillStyle = 'red';
-    } else {
-      ctx.fillStyle = 'darkblue';
-    }
-
-    ctx.fillRect(particle.d.x - 0.5, particle.d.y - 0.5, 1.0, 1.0);
+    ctx.fillRect(particle.d.x - 1.5, particle.d.y - 1.5, 3.0, 3.0);
   }
 
-  //physDrawcollisionDebugGrid(phys, cam);
+  physDrawcollisionDebugGrid(phys, cam);
 }
