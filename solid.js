@@ -8,12 +8,6 @@
 // TODO: maintain property that all branches before poly have both in and out
 // sub trees
 
-// TODO: clip can create new non-linked edges on existing poly, which will mess up their
-// bspTree (only on separation of non-connected?)
-
-// TODO: to fix above, merge clip to marked regions, have new merged function return something
-// that isn't a solid, and the caller has to use solidExtractRegion
-
 function solidCreate(poly) {
     var solid = null;
 
@@ -362,6 +356,25 @@ function solidRadiusSquared(solid) {
   }
 
   return Math.max(solidRadiusSquared(solid.in), solidRadiusSquared(solid.out));
+}
+
+function solidVerticesHelper(solid, vertexArray) {
+  if (solid == null) {
+    return;
+  }
+
+  if (solid.poly != null) {
+    meshPolyVertices(solid.poly, vertexArray);
+  } else {
+    solidVerticesHelper(solid.in, vertexArray);
+    solidVerticesHelper(solid.out, vertexArray);
+  }
+}
+
+function solidVertices(solid) {
+  var vertexArray = [];
+  solidVerticesHelper(solid, vertexArray);
+  return vertexArray;
 }
 
 function solidFill(solid, ctx) {

@@ -355,6 +355,42 @@ function meshPolyMomentOfInertia(poly) {
   return num / (6.0 * den);
 }
 
+function meshEdgePrevExterior(edge) {
+  if (edge.link != null) {
+    throw "edge not exterior";
+  }
+
+  while (edge.prev.link != null) {
+    edge = edge.prev.link;
+  }
+  return edge.prev;
+}
+
+function meshEdgeIsExteriorConvex(edge) {
+  if (edge.link != null) {
+    return false;
+  }
+
+  var prev = meshEdgePrevExterior(edge);
+
+  var ax = edge.x - prev.x;
+  var ay = edge.y - prev.y;
+  var bx = edge.next.x - prev.x;
+  var by = edge.next.y - prev.y;
+
+  return ax * by - ay * bx > 0.0;
+}
+
+function meshPolyVertices(poly, vertexArray) {
+  var i = poly;
+  do {
+    if (meshEdgeIsExteriorConvex(i)) {
+      vertexArray[vertexArray.length] = { x: i.x, y: i.y };
+    }
+    i = i.next;
+  } while (i != poly);
+}
+
 function meshPolyRadiusSquared(poly) {
   var i = poly;
   var r = 0.0;

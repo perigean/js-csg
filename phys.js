@@ -23,7 +23,8 @@ function physReset(phys) {
   globalphysId = 0;
 }
 
-function physBodyRelativeVelocity(body, p, v) {
+// velocity of body in direction of n at p
+function physBodyRelativeVelocity(body, p, n) {
   var dBody = body.d;
   var vBody = body.v;
   var ωBody = body.ω;
@@ -31,8 +32,7 @@ function physBodyRelativeVelocity(body, p, v) {
   var vx = vBody.x + (dBody.y - p.y) * ωBody;
   var vy = vBody.y + (p.x - dBody.x) * ωBody;
 
-  v.x -= vx;
-  v.y -= vy;
+  return n.x * vx + n.y * vy;
 }
 
 function physBodyApplyImpulse(body, p, n, j) {
@@ -104,6 +104,7 @@ function physAddShape(phys, solid, ρ, d, θ, v, ω) {
   phys.bodies.push({
     id: globalphysId++,
     solid: solid,
+    verts: solidVertices(solid),
     ρ: ρ,
     m: ρ * ca.area,
     I: ρ * ca.area * solidMomentOfInertia(solid),
@@ -181,29 +182,138 @@ function physFirstCollision(phys, curr, prev, n) {
   return hitBody;
 }
 
-function physCollideParticle(phys, particle, prev) {
+function physCollideParticle(phys, particle, prevPos) {
   var n = { x: 0.0, y: 0.0 };
-  var body = physFirstCollision(phys, particle.d, prev, n);
+  var body = physFirstCollision(phys, particle.d, prevPos, n);
 
   if (body != null) { // particle hit something
-    var vRel = { x: particle.v.x, y: particle.v.y };
-    physBodyRelativeVelocity(body, particle.d, vRel);
-    var v = vRel.x * n.x + vRel.y * n.y;  // velocity in direction of (inward) normal at collision point
+    var v = physBodyRelativeVelocity(body, particle.d, n);
+    v -= particle.v.x * n.x + particle.v.y * n.y;
 
-    if (v > 0.0) {  // actually converging at collision point
-      var dv = -v * (1.0 + 0.9); // TODO: coefficient of restitution taken from somewhere
+    if (v < 0.0) {  // actually converging at collision point
+      // get delta v needed for correct separation velocity
+      v = -v * (1.0 + 0.9); // TODO: coefficient of restitution taken from somewhere
 
       // calculate change in velocity per unit of impulse
       var bodyDvDj = physBodyDvByDj(body, particle.d, n);
       var partDvDj = 1.0 / particle.m;
 
-      var j = dv / (bodyDvDj + partDvDj);
+      var j = v / (bodyDvDj + partDvDj);
 
-      physBodyApplyImpulse(body, particle.d, n, -j);
-      particle.v.x += n.x * j / particle.m;
-      particle.v.y += n.y * j / particle.m;
+      physBodyApplyImpulse(body, particle.d, n, j);
+      particle.v.x -= n.x * j / particle.m;
+      particle.v.y -= n.y * j / particle.m;
+
+      return true;
     }
   }
+  return false;
+}
+
+// if verticies from body hit otherBody in the previous frame
+// returns true if there was a hit
+// p, n set to position and normal of first hit
+// TODO: find 'first' hit, not just any
+function bodyCollideVerts(body, bodyMove, otherBody, p, n) {
+  // TODO: transforms depend on if body or otherBody are the ones being moved
+  var prevT;
+  var currT;
+
+  if (bodyMove) {
+    prevT = transformCompose(body.prevLocalToWorld, otherBody.worldToLocal);
+    currT = transformCompose(body.localToWorld, otherBody.worldToLocal);
+  } else {
+    prevT = transformCompose(body.localToWorld, otherBody.prevWorldToLocal);
+    currT = transformCompose(body.localToWorld, otherBody.worldToLocal);
+  }
+
+  var verts = body.verts;
+  var bspTree = otherBody.solid;
+
+  for (var i = 0; i < verts.length; i++) {
+    var v = verts[i];
+    var prev = { x: v.x, y: v.y };
+    var curr = { x: v.x, y: v.y };
+    transformPoint(prevT, prev);
+    transformPoint(currT, curr);
+
+    var bsp = bspTreeCollide(bspTree, prev.x, prev.y, curr.x, curr.y);
+
+    if (bsp != null) {
+      var t = bspIntersect(bsp, curr.x, curr.y, prev.x, prev.y);
+
+      p.x = curr.x * t + prev.x * (1.0 - t);
+      p.y = curr.y * t + prev.y * (1.0 - t);
+      transformPoint(otherBody.localToWorld, p);
+
+      var nl = Math.sqrt(bsp.nx * bsp.nx + bsp.ny * bsp.ny);
+      n.x = bsp.nx / nl;
+      n.y = bsp.ny / nl;
+      transformNormal(otherBody.localToWorld, n);
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function bodyCollide(body, otherBody, p, n) {
+  if (bodyCollideVerts(body, true, otherBody, p, n)) {
+    return true;
+  }
+  if (bodyCollideVerts(otherBody, false, body, p, n)) {
+    n.x = -n.x;
+    n.y = -n.y;
+    return true;
+  }
+  return false;
+}
+
+function physBodyFirstCollision(phys, body, p, n) {
+  for (var i = 0; i < phys.bodies.length; i++) {
+    var otherBody = phys.bodies[i];
+
+    if (body.id != otherBody.id) {
+      if (bodyCollide(body, otherBody, p, n)) {
+        return otherBody;
+      }
+    }
+  }
+  return null;
+}
+
+function physCollideBody(phys, body) {
+  var n = { x: 0.0, y: 0.0 };
+  var p = { x: 0.0, y: 0.0 };
+  var otherBody = physBodyFirstCollision(phys, body, p, n);
+
+  if (otherBody != null) {
+    // have a collision!
+    // normal is inward on otherBody
+
+    // resolve impulse
+    // get relative velocity
+    var v = physBodyRelativeVelocity(otherBody, p, n) - physBodyRelativeVelocity(body, p, n);
+
+    if (v < 0.0) {
+      // delta v for correct separation velocity
+      v = -v * (1.0 + 0.9); // TODO: coefficient of restitution taken from somewhere
+
+      // get impulse needed per delta v
+      var bodyDvDj = physBodyDvByDj(body, p, { x: -n.x, y: -n.y } );
+      var otherBodyDvDj = physBodyDvByDj(otherBody, p, n);
+      var j = v / (bodyDvDj + otherBodyDvDj);
+
+      // apply impulse
+      physBodyApplyImpulse(body, p, n, -j);
+      physBodyApplyImpulse(otherBody, p, n, j);
+    }
+
+    // even if we don't apply an impulse, return true since they overlap and we have to step them back
+    return true;
+  }
+  return false;
 }
 
 function physTimeStep(phys) {
@@ -212,8 +322,11 @@ function physTimeStep(phys) {
   for (var i = 0; i < phys.bodies.length; i++) {
     var body = phys.bodies[i];
 
-    // Just use forward euler, since we don't care about gravity being accurate
+    // Just use forward euler, since we don't care about gravity (which doesn't exist yet) being accurate
     // and all other accelerations are impulses which are not integrated here
+    var dPrevx = body.d.x;
+    var dPrevy = body.d.y;
+    var θPrev = body.θ;
 
     body.d.x += body.v.x * dt;
     body.d.y += body.v.y * dt;
@@ -227,12 +340,22 @@ function physTimeStep(phys) {
       body.θ += rotations * 2.0 * Math.PI;
     }
 
-    // TODO: collision detection
-
     body.prevWorldToLocal = body.worldToLocal;
     body.prevLocalToWorld = body.localToWorld;
     body.localToWorld = transformTranslate(transformRotateCreate(body.θ), body.d.x, body.d.y);
     body.worldToLocal = transformInvert(body.localToWorld);
+
+    // body-body collision detection
+    if (physCollideBody(phys, body)) {
+      // back up both body and otherBody to previous timestep
+      body.d.x = dPrevx;
+      body.d.y = dPrevy;
+      body.θ = θPrev;
+
+      body.localToWorld = transformTranslate(transformRotateCreate(body.θ), body.d.x, body.d.y);
+      body.worldToLocal = transformInvert(body.localToWorld);
+    }
+    // TODO: assert body is not overlapping anything
   }
 
   var particles = phys.particles;
@@ -245,16 +368,15 @@ function physTimeStep(phys) {
     particle.d.x += particle.v.x * dt;
     particle.d.y += particle.v.y * dt;
 
-    physCollideParticle(phys, particle, prev);
+    if (physCollideParticle(phys, particle, prev)) {
+      for (var j = 0; j < phys.bodies.length; ++j) {
+        var body = phys.bodies[j];
+        var local = { x: particle.d.x, y: particle.d.y };
+        transformPoint(body.worldToLocal, local);
 
-    for (var j = 0; j < phys.bodies.length; ++j) {
-      var body = phys.bodies[j];
-      var local = { x: particle.d.x, y: particle.d.y };
-      transformPoint(body.worldToLocal, local);
-
-      if (bspTreeIn(body.solid, local.x, local.y)) {
-        var x = bspTreeIn(body.solid, local.x, local.y);
-        throw "point in body after time step!";
+        if (1 == (1 & bspTreePointSide(body.solid, local.x, local.y))) {
+          particle.t = 0.0; // kill particle if it's inside something
+        }
       }
     }
   }
@@ -364,8 +486,21 @@ function physDraw(phys, cam) {
 
     camPushTransform(cam, body.localToWorld);
 
+    ctx.fillStyle = 'black';
+    for (var j = 0; j < body.verts.length; j++) {
+      var v = body.verts[j];
+      ctx.fillRect(v.x - 1.5, v.y - 1.5, 3.0, 3.0);
+    }
+
+    camPopTransform(cam);
+  }
+
+  for (var i = 0; i < phys.bodies.length; i++) {
+    var body = phys.bodies[i];
+
+    camPushTransform(cam, body.localToWorld);
+
     solidFill(body.solid, camera.ctx);
-    solidStroke(body.solid, camera.ctx);
 
     ctx.beginPath();
     ctx.arc(0.0, 0.0, 4, 0, 2 * Math.PI, false);
@@ -378,6 +513,10 @@ function physDraw(phys, cam) {
     ctx.strokeStyle = 'black';
     ctx.stroke();
 
+    camPushTransform(cam, transformStretchCreate(1.0, -1.0));
+    ctx.font = '12px Courier';
+    ctx.fillText(body.id.toString(), 4, -2);
+    camPopTransform(cam);
     camPopTransform(cam);
   }
 
@@ -387,5 +526,22 @@ function physDraw(phys, cam) {
     ctx.fillRect(particle.d.x - 1.5, particle.d.y - 1.5, 3.0, 3.0);
   }
 
-  physDrawcollisionDebugGrid(phys, cam);
+  //physDrawcollisionDebugGrid(phys, cam);
+}
+
+function physBodyLocalCoordinatesAtPosition(phys, p) {
+  for (var i = 0; i < phys.bodies.length; i++) {
+    var body = phys.bodies[i];
+    var l = { x: p.x, y: p.y };
+
+    transformPoint(body.worldToLocal, l);
+
+    if (1 == (1 & bspTreePointSide(body.solid, l.x, l.y))) {
+      p.x = l.x;
+      p.y = l.y;
+      return true;
+    }
+  }
+
+  return false;
 }

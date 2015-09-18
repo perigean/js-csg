@@ -96,11 +96,39 @@ function main() {
     [{ x: -64, y: -64 },{ x: 64, y: -64 },{ x: 64, y: 64 },{ x: -64, y: 64 }],
     1.0,                                // density
     { x: 0.0, y: 0.0 }, 0.0,            // position
-    {x: 0.0, y: 0.0 }, 3.14);  // velocity
+    { x: 0.0, y: 0.0 }, 0.0);  // velocity
+
+  recorderAddShape(rec,
+    [{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }],
+    1.0,                                // density
+    { x: -256.0, y: 0.0 }, 0.0,            // position
+    { x: 72.0, y: 0.0 }, 0.0);  // velocity
+
+  recorderAddShape(rec,
+    [{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }],
+    1.0,                                // density
+    { x: 256.0, y: 0.0 }, 0.0,            // position
+    { x: -70.0, y: 0.0 }, 0.0);  // velocity
 
   camera = camCreate(canvas, render);
   camClear(camera);
   physDraw(phys, camera);
+
+  canvas.onmousemove = function (evt) {
+    var p = { x: evt.offsetX, y: evt.offsetY };
+    camCameraToModel(camera, p);
+
+    document.getElementById('worldx').innerHTML = p.x.toFixed(3);
+    document.getElementById('worldy').innerHTML = p.y.toFixed(3);
+
+    if (physBodyLocalCoordinatesAtPosition(phys, p)) {
+      document.getElementById('localx').innerHTML = p.x.toFixed(3);
+      document.getElementById('localy').innerHTML = p.y.toFixed(3);
+    } else {
+      document.getElementById('localx').innerHTML = 'N/A';
+      document.getElementById('localy').innerHTML = 'N/A';
+    }
+  };
 
   canvas.onclick = function (evt) {
     var p = { x: evt.offsetX, y: evt.offsetY };
