@@ -43,9 +43,9 @@ var playing = 0;
 var phys = physCreate(0.016666667);
 var rec;
 
-var regularParticle = physCreateParticleProperties(9.0, 1.0, null, null);
+var regularParticle = physCreateParticleProperties(9.0, 0.9, null, null);
 
-var explosiveParticle = physCreateParticleProperties(1000.0, 1.0,
+var explosiveParticle = physCreateParticleProperties(1000.0, 0.9,
   function explosiveParticleoncollide(particle, body, n) {
     var t = transformTranslateCreate(particle.d.x, particle.d.y);
     var bsp = bspTreeTransformClone(bspTestSquare, t);
@@ -130,7 +130,7 @@ function main() {
     physDraw(phys, camera);
   }
 
-  var shapeProps = physCreateBodyProperties(1.0, 1.0, null, null, null, null);
+  var shapeProps = physCreateBodyProperties(1.0, 0.9, null, null, null, null);
 
   rec = recorderCreate(phys, document.getElementById('log'));
   recorderAddShape(rec,

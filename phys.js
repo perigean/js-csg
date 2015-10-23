@@ -24,10 +24,7 @@
 // also, saving references to particles and bodies passed to callbacks is forbidden
 
 // TODO: factor out drawing code to something else, this code should just provide polygons or whatever, and not care about materials etc.
-// IDEA: use callbacks to generate draw stuff somehow, since phys still needs to be the one uploading transforms to the GPU
 // TODO: friction
-// TODO: coefficient of restitution
-// TODO: body and particle 'properties'
 // IDEA: on collision, give body another timestep (or n) so they don't lock up? Also, bodies that collide more get pushed to end of array somehow?
 
 function physCreate(dt) {
@@ -262,7 +259,8 @@ function physCollideParticle(phys, particle, prevPos) {
 
   if (v < 0.0) {  // actually converging at collision point
     // get delta v needed for correct separation velocity
-    v = -v * (1.0 + 0.9); // TODO: coefficient of restitution taken from somewhere
+    var e = (particle.properties.e + body.properties.e) * 0.5;  // use mean coefficient of restitution
+    v = -v * (1.0 + e);
 
     // calculate change in velocity per unit of impulse
     var bodyDvDj = physBodyDvByDj(body, particle.d, n);
@@ -380,7 +378,8 @@ function physCollideBody(phys, body) {
 
   if (v < 0.0) {
     // delta v for correct separation velocity
-    v = -v * (1.0 + 0.9); // TODO: coefficient of restitution taken from somewhere
+    var e = (body.properties.e + otherBody.properties.e) * 0.5; // use mean of the two coefficients of restitution
+    v = -v * (1.0 + e);
 
     // get impulse needed per delta v
     var bodyDvDj = physBodyDvByDj(body, p, { x: -n.x, y: -n.y } );
