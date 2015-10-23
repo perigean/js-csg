@@ -4,6 +4,10 @@
 
 // requires phys.js
 
+// TODO: don't couple to phys, do only for input
+// IDEA: allow people to register callbacks for events
+// clicks is all we care about. Record in world coordinates to make it view independent
+
 function recorderCreate(phys, logText) {
   return {
     phys: phys,
@@ -29,12 +33,12 @@ function recorderNextFrame(rec) {
   physTimeStep(rec.phys);
 }
 
-function recorderAddShape(rec, verts, ρ, d, θ, v, ω) {
-  recorderLogCall(rec, 'AddShape', [ verts, ρ, d, θ, v, ω ]);
+function recorderAddShape(rec, verts, d, θ, v, ω, properties) {
+  recorderLogCall(rec, 'AddShape', [ verts, properties, d, θ, v, ω ]);
 
   var mesh = meshCreate(verts);
   var solid = solidCreate(mesh);
-  physAddShape(rec.phys, solid, ρ, d, θ, v, ω);
+  physAddBody(rec.phys, solid, d, θ, v, ω, properties);
 }
 
 function recorderAddParticle(rec, m, d, v, t) {

@@ -2,6 +2,8 @@
 //
 // Copywrite Charles Dick 2015
 
+// TODO: avoid all short-lived allocations by using allocation pools
+
 var camera;
 var log;
 
@@ -41,13 +43,50 @@ var playing = 0;
 var phys = physCreate(0.016666667);
 var rec;
 
+var regularParticle = physCreateParticleProperties(9.0, 1.0, null, null);
+
+var explosiveParticle = physCreateParticleProperties(1000.0, 1.0,
+  function explosiveParticleoncollide(particle, body, n) {
+    var t = transformTranslateCreate(particle.d.x, particle.d.y);
+    var bsp = bspTreeTransformClone(bspTestSquare, t);
+
+    // kill the particle
+    particle.t = 0;
+
+    // add explosion debris
+    for (var x = -15.0; x <= 15.0; x += 3.0) {
+      for (var y = -15.0; y <= 15.0; y += 3.0) {
+        var p = { x: particle.d.x + x, y: particle.d.y + y };
+
+        if (physPointInsideBodies(phys, p)) {
+          var v = { x: 0.0, y: 0.0 };
+          physBodyVelocity(body, p, v);
+
+          v.x += (x - n.x * 32) * 2.0;
+          v.y += (y - n.y * 32) * 2.0;
+
+          physAddParticle(
+            phys,
+            p,
+            v,
+            1.0,
+            regularParticle);
+        }
+      }
+    }
+
+    physClipBodies(phys, bsp);
+  },
+  null
+);
+
 function render() {
   camClear(camera);
   physDraw(phys, camera);
 }
 
 function renderNextFrame() {
-  // TODO: decouple frame rate and phys time step
+  // TODO: decouple frame rate and phys time step?
 
   recorderNextFrame(rec);
   render();
@@ -91,24 +130,26 @@ function main() {
     physDraw(phys, camera);
   }
 
+  var shapeProps = physCreateBodyProperties(1.0, 1.0, null, null, null, null);
+
   rec = recorderCreate(phys, document.getElementById('log'));
   recorderAddShape(rec,
     [{ x: -64, y: -64 },{ x: 64, y: -64 },{ x: 64, y: 64 },{ x: -64, y: 64 }],
-    1.0,                                // density
-    { x: 0.0, y: 0.0 }, 0.0,            // position
-    { x: 0.0, y: 0.0 }, 0.0);  // velocity
+    { x: 0.0, y: 0.0 }, 0.0,    // position
+    { x: 0.0, y: 0.0 }, 0.0,    // velocity
+    shapeProps);
 
   recorderAddShape(rec,
     [{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }],
-    1.0,                                // density
-    { x: -256.0, y: 0.0 }, 0.0,            // position
-    { x: 72.0, y: 0.0 }, 0.0);  // velocity
+    { x: -256.0, y: 0.0 }, 0.0, // position
+    { x: 72.0, y: 0.0 }, 0.0,   // velocity
+    shapeProps);
 
   recorderAddShape(rec,
     [{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }],
-    1.0,                                // density
-    { x: 256.0, y: 0.0 }, 0.0,            // position
-    { x: -70.0, y: 0.0 }, 0.0);  // velocity
+    { x: 256.0, y: 0.0 }, 0.0,  // position
+    { x: -70.0, y: 0.0 }, 0.0,  // velocity
+    shapeProps);
 
   camera = camCreate(canvas, render);
   camClear(camera);
@@ -135,14 +176,7 @@ function main() {
     camCameraToModel(camera, p);
 
     if (evt.shiftKey) {
-      for (var i = 0; i < 20; i++) {
-        var r = Math.random() * 8;
-        var a = Math.random() * Math.PI * 2.0;
-        var d = { x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r };
-
-        recorderAddParticle(rec, 10.0, d, { x: 256.0, y: 0.0 }, 5.0);
-      }
-
+      physAddParticle(phys, p, { x: 75.0, y: 0.0 }, 5.0, explosiveParticle);
 
     } else {
       var t = transformTranslateCreate(p.x, p.y);
