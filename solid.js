@@ -1,6 +1,6 @@
 // solid.js
 //
-// Copywrite Charles Dick 2015
+// Copyright Charles Dick 2015
 //
 // depends on transform.js
 // depends on bsp.js

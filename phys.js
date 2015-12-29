@@ -1,6 +1,6 @@
 // phys.js
 //
-// Copywrite Charles Dick 2015
+// Copyright Charles Dick 2015
 //
 // tracks a physical system of body and particle objects that can interact
 //
@@ -8,7 +8,6 @@
 // requires bsp.js, transform.js, camera.js
 
 // TODO: support snapshots?
-// TODO: break out static parts of body and particle into 'materials' density, callbacks, friction, bouncyness, (how to draw in the future) etc.
 // TODO: new API
 // global functions
 //  -add body - callbacks for timestep, collide particle, collide body, clip (causing new ID or splitting)
@@ -21,11 +20,16 @@
 //  -apply impulse
 //  -kill particle
 // note that all the above functions must be safe to call from callbacks
+// NB: clip is unsafe, it invalidates any shape that is clipped, which might be passed to a callback
+//  TODO: figure out rules for callbacks
 // also, saving references to particles and bodies passed to callbacks is forbidden
 
 // TODO: factor out drawing code to something else, this code should just provide polygons or whatever, and not care about materials etc.
 // TODO: friction
 // IDEA: on collision, give body another timestep (or n) so they don't lock up? Also, bodies that collide more get pushed to end of array somehow?
+// TODO: acceleration structures for physics and clipping:
+//  -bounding circle
+//  -grid/octTree/rtree?
 
 function physCreate(dt) {
   return {
@@ -114,7 +118,7 @@ function physBodyDvByDj(body, p, n) {
 
 var globalphysId = 0;
 
-function physCreateBodyProperties(ρ, e, oncollideparticle, oncollidebody, ontimestep, onclip) {
+function physBodyPropertiesCreate(ρ, e, oncollideparticle, oncollidebody, ontimestep, onclip) {
   return {
     ρ: ρ, // density
     e: e, // coefficient of restitution for collisions
@@ -125,7 +129,7 @@ function physCreateBodyProperties(ρ, e, oncollideparticle, oncollidebody, ontim
   };
 }
 
-function physAddBody(phys, solid, d, θ, v, ω, properties) {
+function physBodyCreate(phys, solid, d, θ, v, ω, properties) {
   var l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
   var ca = solidCentroidArea(solid);
@@ -150,7 +154,7 @@ function physAddBody(phys, solid, d, θ, v, ω, properties) {
 
   l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
-  phys.bodies.push({
+  var body = {
     id: globalphysId++,
     solid: solid,
     verts: solidVertices(solid),
@@ -166,12 +170,16 @@ function physAddBody(phys, solid, d, θ, v, ω, properties) {
     localToWorld: l2w,
     prevWorldToLocal: transformInvert(l2w),
     prevLocalToWorld: l2w
-  });
+  };
+
+  phys.bodies.push(body);
+
+  return body;
 }
 
 // TODO: make sure all external APIs are safe to call from any callback
 
-function physCreateParticleProperties(m, e, oncollide, ontimestep) {
+function physParticlePropertiesCreate(m, e, oncollide, ontimestep) {
   return {
     m: m,                   // mass
     e: e,                   // coefficient of restitution
@@ -180,7 +188,7 @@ function physCreateParticleProperties(m, e, oncollide, ontimestep) {
   };
 }
 
-function physAddParticle(phys, d, v, t, properties) {
+function physParticleCreate(phys, d, v, t, properties) {
   if (phys.numParticles < phys.particles.length) {
     phys.particles[phys.numParticles] = {
       id: globalphysId++,
@@ -396,7 +404,7 @@ function physCollideBody(phys, body) {
   }
 
   if (otherBody.properties.oncollidebody) {
-    otherBody.properties.oncollidebody(otherBody, body, p, n, -j);
+    otherBody.properties.oncollidebody(otherBody, body, p, n, j);
   }
 
   return true;
@@ -499,7 +507,7 @@ function physClipBodies(phys, bsp) {
       for (var j = 0; j < regions; j++) {
         var extractedSolid = solidExtractRegion(solid, j);
 
-        physAddBody(
+        var clippedBody = physBodyCreate(
           phys,
           extractedSolid,
           { x: body.d.x, y: body.d.y },
@@ -507,6 +515,10 @@ function physClipBodies(phys, bsp) {
           { x: body.v.x, y: body.v.y },
           body.ω,
           body.properties);
+
+        if (clippedBody.properties.onclip) {
+          clippedBody.properties.onclip(body, clippedBody, bsp);
+        }
       }
     }
   }

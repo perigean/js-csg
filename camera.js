@@ -1,6 +1,6 @@
 // camera.js
 //
-// Copywrite Charles Dick 2015
+// Copyright Charles Dick 2015
 
 function camCreate(canvas, drawCallback) {
   var ctx = canvas.getContext('2d');
@@ -20,7 +20,7 @@ function camCreate(canvas, drawCallback) {
     mouseCamera: { x: 0.0, y: 0.0 }
   };
 
-  canvas.onmousewheel = function (evt) {
+  canvas.addEventListener('mousewheel', function cameraOnMouseWheel(evt) {
     if (evt.shiftKey) {
       var scale = Math.log((-evt.deltaY / 500.0) + Math.E);
       var worldToCamera = cam.worldToCamera;
@@ -39,10 +39,10 @@ function camCreate(canvas, drawCallback) {
     camRecompose(cam);
     drawCallback();
 
-    return false;
-  }
+    evt.preventDefault();
+  });
 
-  canvas.onmousemove = function (evt) {
+  canvas.addEventListener('mousemove', function cameraOnMouseMove(evt) {
     cam.mouseCamera.x = evt.offsetX;
     cam.mouseCamera.y = evt.offsetY;
     cam.mouseModel.x = evt.offsetX;
@@ -50,7 +50,7 @@ function camCreate(canvas, drawCallback) {
     transformPoint(cam.cameraToModel, cam.mouseModel);
 
     drawCallback();
-  }
+  });
 
 
   return cam;

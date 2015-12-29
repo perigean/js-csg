@@ -1,8 +1,10 @@
 // main.js
 //
-// Copywrite Charles Dick 2015
+// Copyright Charles Dick 2015
 
 // TODO: avoid all short-lived allocations by using allocation pools
+
+// TODO: figure out input stuff, so we can hook it to recorder (also have snapshots? how to coordinate each component? recorder can ask for snapshots?)
 
 var camera;
 var log;
@@ -41,44 +43,6 @@ var bspTestTopRight = {px: 0, py: 0, nx: 1, ny: 0,
 var playing = 0;
 
 var phys = physCreate(0.016666667);
-var rec;
-
-var regularParticle = physCreateParticleProperties(9.0, 0.9, null, null);
-
-var explosiveParticle = physCreateParticleProperties(1000.0, 0.9,
-  function explosiveParticleoncollide(particle, body, n) {
-    var t = transformTranslateCreate(particle.d.x, particle.d.y);
-    var bsp = bspTreeTransformClone(bspTestSquare, t);
-
-    // kill the particle
-    particle.t = 0;
-
-    // add explosion debris
-    for (var x = -15.0; x <= 15.0; x += 3.0) {
-      for (var y = -15.0; y <= 15.0; y += 3.0) {
-        var p = { x: particle.d.x + x, y: particle.d.y + y };
-
-        if (physPointInsideBodies(phys, p)) {
-          var v = { x: 0.0, y: 0.0 };
-          physBodyVelocity(body, p, v);
-
-          v.x += (x - n.x * 32) * 2.0;
-          v.y += (y - n.y * 32) * 2.0;
-
-          physAddParticle(
-            phys,
-            p,
-            v,
-            1.0,
-            regularParticle);
-        }
-      }
-    }
-
-    physClipBodies(phys, bsp);
-  },
-  null
-);
 
 function render() {
   camClear(camera);
@@ -88,7 +52,7 @@ function render() {
 function renderNextFrame() {
   // TODO: decouple frame rate and phys time step?
 
-  recorderNextFrame(rec);
+  physTimeStep(phys);
   render();
 }
 
@@ -117,6 +81,49 @@ function nextFrame() {
   renderNextFrame();
 }
 
+// TODO: move this somewhere, and maybe hang it off of something other than the window
+function inputBind() {
+  var log = document.getElementById('log');
+
+  var input = {
+    left: false,
+    right: false,
+    throttle: false,
+    fire: false,
+  };
+
+  function toggleInput(isDown, e) {
+    switch (e.which) {
+      case 65:  // a - left
+      input.left = isDown;
+      break;
+
+      case 68:  // d - right
+      input.right = isDown;
+      break;
+
+      case 87: // w - throttle
+      input.throttle = isDown;
+      break;
+
+      case 32: // space - fire
+      input.fire = isDown;
+      e.preventDefault();
+      break;
+    }
+  };
+
+  window.addEventListener('keydown', function inputKeyDown(e) {
+    toggleInput(true, e);
+  });
+
+  window.addEventListener('keyup', function inputKeyDown(e) {
+    toggleInput(false, e);
+  });
+
+  return input;
+};
+
 function main() {
   var canvas = document.getElementById('canvas');
   var pp = document.getElementById("playpause");
@@ -128,28 +135,31 @@ function main() {
     recorderReplay(rec);
     camClear(camera);
     physDraw(phys, camera);
-  }
+  };
 
-  var shapeProps = physCreateBodyProperties(1.0, 0.9, null, null, null, null);
+  var shapeProps = physBodyPropertiesCreate(1.0, 0.9, null, null, null, null);
 
-  rec = recorderCreate(phys, document.getElementById('log'));
-  recorderAddShape(rec,
-    [{ x: -64, y: -64 },{ x: 64, y: -64 },{ x: 64, y: 64 },{ x: -64, y: 64 }],
+  var input = inputBind();
+
+  physBodyCreate(phys,
+    solidCreate(meshCreate([{ x: -64, y: -64 },{ x: 64, y: -64 },{ x: 64, y: 64 },{ x: -64, y: 64 }])),
     { x: 0.0, y: 0.0 }, 0.0,    // position
     { x: 0.0, y: 0.0 }, 0.0,    // velocity
     shapeProps);
 
-  recorderAddShape(rec,
-    [{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }],
+  physBodyCreate(phys,
+    solidCreate(meshCreate([{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }])),
     { x: -256.0, y: 0.0 }, 0.0, // position
     { x: 72.0, y: 0.0 }, 0.0,   // velocity
     shapeProps);
 
-  recorderAddShape(rec,
-    [{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }],
+  physBodyCreate(phys,
+    solidCreate(meshCreate([{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }])),
     { x: 256.0, y: 0.0 }, 0.0,  // position
     { x: -70.0, y: 0.0 }, 0.0,  // velocity
     shapeProps);
+
+  playerCreate(phys, { x: 0.0, y: 128.0 }, 0.0, input);
 
   camera = camCreate(canvas, render);
   camClear(camera);
@@ -176,13 +186,13 @@ function main() {
     camCameraToModel(camera, p);
 
     if (evt.shiftKey) {
-      physAddParticle(phys, p, { x: 75.0, y: 0.0 }, 5.0, explosiveParticle);
+      physParticleCreate(phys, p, { x: 75.0, y: 0.0 }, 5.0, explosiveParticle);
 
     } else {
       var t = transformTranslateCreate(p.x, p.y);
       var bsp = bspTreeTransformClone(bspTestSquare, t);
 
-      recorderClipBodies(rec, bsp);
+      physClipBodies(phys, bsp);
     }
 
     if (playing == 0) {

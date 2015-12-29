@@ -1,6 +1,6 @@
 // bsp.js
 //
-// Copywrite Charles Dick 2015
+// Copyright Charles Dick 2015
 //
 // This file contains functions to create and manipulate BSP trees and related structures
 //

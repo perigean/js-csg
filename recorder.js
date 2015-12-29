@@ -7,7 +7,7 @@
 // TODO: don't couple to phys, do only for input
 // IDEA: allow people to register callbacks for events
 // clicks is all we care about. Record in world coordinates to make it view independent
-
+/*
 function recorderCreate(phys, logText) {
   return {
     phys: phys,
@@ -38,12 +38,12 @@ function recorderAddShape(rec, verts, d, θ, v, ω, properties) {
 
   var mesh = meshCreate(verts);
   var solid = solidCreate(mesh);
-  physAddBody(rec.phys, solid, d, θ, v, ω, properties);
+  physBodyCreate(rec.phys, solid, d, θ, v, ω, properties);
 }
 
 function recorderAddParticle(rec, m, d, v, t) {
   recorderLogCall(rec, 'AddParticle', [ m, d, v, t ]);
-  physAddParticle(rec.phys, m, d, v, t);
+  physParticleCreate(rec.phys, m, d, v, t);
 }
 
 function recorderClipBodies(rec, bsp) {
@@ -83,3 +83,4 @@ function recorderReplay(rec, frame) {
     }
   }
 }
+*/
