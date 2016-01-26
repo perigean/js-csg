@@ -8,7 +8,7 @@
 //
 // requires phys.js
 
-function playerCreate(phys, d, θ, input) {
+function playerCreate(phys, d, θ, input, camera) {
   var state = {
     health: 100.0,
     cooldown: 0.0,
@@ -16,7 +16,7 @@ function playerCreate(phys, d, θ, input) {
 
   var regularParticle = physParticlePropertiesCreate(9.0, 0.9, null, null);
 
-  var explosiveParticle = physParticlePropertiesCreate(1000.0, 0.9,
+  var explosiveParticle = physParticlePropertiesCreate(100.0, 0.9,
     function explosiveParticleoncollide(particle, body, n) {
       var t = transformTranslateCreate(particle.d.x, particle.d.y);
       var bsp = bspTreeTransformClone(bspTestSquare, t);
@@ -61,6 +61,14 @@ function playerCreate(phys, d, θ, input) {
       // TODO: take damage
     },
     function playerOntimestep(body, dt) {
+      var speed = Math.sqrt(body.v.x * body.v.x + body.v.y * body.v.y);
+
+      camPosition(
+        camera,
+        { x: body.d.x + body.v.x * 0.25, y: body.d.y + body.v.y * 0.25 },
+        1.0 / (1.0 + speed / 256.0)
+      );
+
       // orientation controls
       if (input.left == true) {
         if (body.ω < 6.24) {
@@ -95,7 +103,7 @@ function playerCreate(phys, d, θ, input) {
       }
 
       if (input.fire == true && state.cooldown <= 0.0) {
-        state.cooldown += 0.5;
+        state.cooldown += 0.1;
 
         var n = {
           x: Math.cos(body.θ),
@@ -108,8 +116,8 @@ function playerCreate(phys, d, θ, input) {
         };
 
         var v = {
-          x: body.v.x + n.x * 128.0,
-          y: body.v.y + n.y * 128.0,
+          x: body.v.x + n.x * 200.0,
+          y: body.v.y + n.y * 200.0,
         };
 
         physParticleCreate(phys, d, v, 3.0, explosiveParticle);
@@ -130,9 +138,10 @@ function playerCreate(phys, d, θ, input) {
     { x: 0.0, y: 0.0 }, 0.0,
     props);
 
+  // NB: player doesn't include the body since it's not guarenteed to be the
+  // same from frame to frame (phys can reuse them etc.)
   return {
     state: state,
-    props: props,
-    body: body,
+    camera: camera,
   };
 }

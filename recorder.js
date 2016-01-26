@@ -4,83 +4,66 @@
 
 // requires phys.js
 
-// TODO: don't couple to phys, do only for input
-// IDEA: allow people to register callbacks for events
 // clicks is all we care about. Record in world coordinates to make it view independent
-/*
-function recorderCreate(phys, logText) {
+
+// TODO: figure out how to do input with less action at a distance
+//  we can't handle keypresses during replay now...
+
+function recorderCreate(phys, input, logText, frameText) {
   return {
     phys: phys,
     frame: 0,
-    logText: logText
+    input: input,
+    lastFrameInput: JSON.stringify(input),
+    logText: logText,
+    frameText: frameText,
   };
 }
 
-function recorderLogCall(rec, op, args) {
-  var logJSON = JSON.stringify(
-    { op: op, args: args }
-  );
+function recorderTimeStep(recorder) {
+  // record input
+  var thisFrameInput = JSON.stringify(recorder.input);
 
-  if(rec.logText.value != '') {
-    rec.logText.value += ',\n' + logJSON;
-  } else {
-    rec.logText.value = logJSON;
+  if (thisFrameInput !== recorder.lastFrameInput) {
+    recorder.logText.innerHTML += ',\n' + JSON.stringify({
+      frame: recorder.frame,
+      input: recorder.input
+    });
   }
+
+  physTimeStep(recorder.phys);
+  recorder.lastFrameInput = thisFrameInput;
+  recorder.frame++;
+  recorder.frameText.value = recorder.frame.toString();
 }
 
-function recorderNextFrame(rec) {
-  recorderLogCall(rec, 'NextFrame', []);
-  physTimeStep(rec.phys);
-}
+function recorderReplay(recorder, render) {
+  var inputLog = JSON.parse('[' + recorder.logText.innerHTML + ']');
+  var replayToFrame = Number(recorder.frameText.value);
 
-function recorderAddShape(rec, verts, d, θ, v, ω, properties) {
-  recorderLogCall(rec, 'AddShape', [ verts, properties, d, θ, v, ω ]);
+  recorder.logText.innerHTML = '{"frame":0,"input":{"left":false,"right":false,"throttle":false,"fire":false}}';
+  recorder.frame = 0;
+  recorder.frameText.value = '0';
 
-  var mesh = meshCreate(verts);
-  var solid = solidCreate(mesh);
-  physBodyCreate(rec.phys, solid, d, θ, v, ω, properties);
-}
+  function recorderReplayer() {
+    while (inputLog.length > 0 && inputLog[0].frame == recorder.frame) {
+      var newInput = inputLog[0].input;
+      recorder.input.left = newInput.left;
+      recorder.input.right = newInput.right;
+      recorder.input.throttle = newInput.throttle;
+      recorder.input.fire = newInput.fire;
+      inputLog.shift();
+    }
 
-function recorderAddParticle(rec, m, d, v, t) {
-  recorderLogCall(rec, 'AddParticle', [ m, d, v, t ]);
-  physParticleCreate(rec.phys, m, d, v, t);
-}
+    recorderTimeStep(recorder);
+    render();
 
-function recorderClipBodies(rec, bsp) {
-  recorderLogCall(rec, 'ClipBodies', [ bsp ]);
-  physClipBodies(rec.phys, bsp);
-}
-
-function recorderReplay(rec, frame) {
-  var replayJSON = '[' + rec.logText.value + ']';
-  var replay = JSON.parse(replayJSON);
-  rec.logText.value = '';
-
-  physReset(rec.phys);
-
-  for (var i = 0; i < replay.length; i++) {
-    var action = replay[i];
-
-    switch (action.op) {
-      case 'NextFrame':
-      recorderNextFrame(rec);
-      break;
-
-      case 'AddShape':
-        recorderAddShape.apply(this, [rec].concat(action.args));
-        break;
-
-      case 'AddParticle':
-        recorderAddParticle.apply(this, [rec].concat(action.args));
-        break;
-
-      case 'ClipBodies':
-        recorderClipBodies.apply(this, [rec].concat(action.args));
-        break;
-
-      default:
-        throw 'unknown replay action';
+    if (recorder.frame < replayToFrame) {
+      requestAnimationFrame(recorderReplayer);
     }
   }
+
+  if (replayToFrame > 0) {
+    requestAnimationFrame(recorderReplayer);
+  }
 }
-*/

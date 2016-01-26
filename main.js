@@ -43,6 +43,8 @@ var bspTestTopRight = {px: 0, py: 0, nx: 1, ny: 0,
 var playing = 0;
 
 var phys = physCreate(0.016666667);
+var input = inputBind();
+var recorder;
 
 function render() {
   camClear(camera);
@@ -52,7 +54,7 @@ function render() {
 function renderNextFrame() {
   // TODO: decouple frame rate and phys time step?
 
-  physTimeStep(phys);
+  recorderTimeStep(recorder);
   render();
 }
 
@@ -124,22 +126,10 @@ function inputBind() {
   return input;
 };
 
-function main() {
-  var canvas = document.getElementById('canvas');
-  var pp = document.getElementById("playpause");
-  var nf = document.getElementById("nextframe");
-  var rp = document.getElementById("replay");
-  pp.onclick = playPause;
-  nf.onclick = nextFrame;
-  rp.onclick = function (evt) {
-    recorderReplay(rec);
-    camClear(camera);
-    physDraw(phys, camera);
-  };
-
+function initializeField() {
   var shapeProps = physBodyPropertiesCreate(1.0, 0.9, null, null, null, null);
 
-  var input = inputBind();
+  physReset(phys);
 
   physBodyCreate(phys,
     solidCreate(meshCreate([{ x: -64, y: -64 },{ x: 64, y: -64 },{ x: 64, y: 64 },{ x: -64, y: 64 }])),
@@ -159,9 +149,31 @@ function main() {
     { x: -70.0, y: 0.0 }, 0.0,  // velocity
     shapeProps);
 
-  playerCreate(phys, { x: 0.0, y: 128.0 }, 0.0, input);
+  playerCreate(phys, { x: 0.0, y: 128.0 }, 0.0, input, camera);
+}
+
+function main() {
+  var canvas = document.getElementById('canvas');
+  var pp = document.getElementById("playpause");
+  var nf = document.getElementById("nextframe");
+  var rp = document.getElementById("replay");
+  pp.onclick = playPause;
+  nf.onclick = nextFrame;
+  rp.onclick = function (evt) {
+    initializeField();
+    recorderReplay(recorder, render);
+  };
+
+  recorder = recorderCreate(
+    phys,
+    input,
+    document.getElementById('log'),
+    document.getElementById('frame'));
 
   camera = camCreate(canvas, render);
+
+  initializeField();
+
   camClear(camera);
   physDraw(phys, camera);
 

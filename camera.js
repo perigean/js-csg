@@ -71,6 +71,16 @@ function camRecompose(cam) {
   transformPoint(cam.cameraToModel, cam.mouseModel);
 }
 
+function camPosition(cam, d, scale) {
+  var canvas = cam.canvas;
+  var t = transformCreate();
+  t = transformStretch(t, 1.0, -1.0);  // flip y axis
+  t = transformTranslate(t, canvas.width * 0.5, canvas.height * 0.5);
+  t = transformTranslate(t, -d.x, d.y);
+  cam.worldToCamera = t;
+  camRecompose(cam);
+}
+
 function camPushTransform(cam, transform) {
   var oldModelToWorld = cam.modelToWorld[cam.modelToWorld.length - 1];
   var newModelToWorld = transformCompose(transform, oldModelToWorld);

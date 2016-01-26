@@ -36,7 +36,8 @@ function physCreate(dt) {
     bodies: [],
     particles: new Array(65536),  // TODO: this is stupid, do proper allocatino stuff
     numParticles: 0,
-    dt: dt
+    dt: dt,
+    nextPhysId: 1
   };
   // TODO: acceleration structures etc.
 }
@@ -44,7 +45,8 @@ function physCreate(dt) {
 function physReset(phys) {
   phys.bodies = [];
   phys.numParticles = 0;
-  globalphysId = 0;
+  phys.nextPhysId = 1;
+
 }
 
 // returns velocity of body at point p in v
@@ -116,8 +118,6 @@ function physBodyDvByDj(body, p, n) {
   return n.x * vx + n.y * vy;
 }
 
-var globalphysId = 0;
-
 function physBodyPropertiesCreate(ρ, e, oncollideparticle, oncollidebody, ontimestep, onclip) {
   return {
     ρ: ρ, // density
@@ -155,7 +155,7 @@ function physBodyCreate(phys, solid, d, θ, v, ω, properties) {
   l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
   var body = {
-    id: globalphysId++,
+    id: phys.nextPhysId++,
     solid: solid,
     verts: solidVertices(solid),
     properties: properties,
@@ -191,7 +191,7 @@ function physParticlePropertiesCreate(m, e, oncollide, ontimestep) {
 function physParticleCreate(phys, d, v, t, properties) {
   if (phys.numParticles < phys.particles.length) {
     phys.particles[phys.numParticles] = {
-      id: globalphysId++,
+      id: phys.nextPhysId++,
       d: d,
       v: v,
       t: t,

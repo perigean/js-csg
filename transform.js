@@ -66,6 +66,12 @@ function transformRotate(t, angle) {
     iy: s * t.ix + c * t.iy, jy: c * t.jx + s * t.jy, dy: s * t.dx + c * t.dy};
 }
 
+function transformStretch(t, sx, sy) {
+  return {
+    ix: sx * t.ix, jx: sx * t.jx, dx: sx * t.dx,
+    iy: sy * t.iy, jy: sy * t.jy, dy: sy * t.dy};
+}
+
 function transformInvert(t) {
   var det = t.ix * t.jy - t.jx * t.iy;
   var dx = t.jx * t.dy - t.jy * t.dx;
