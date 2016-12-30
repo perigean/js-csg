@@ -31,6 +31,42 @@
 //  -bounding circle
 //  -grid/octTree/rtree?
 
+import {
+  bspIntersect,
+  bspTreeCollide,
+  bspTreeDebugLines,
+  bspTreePointSide,
+  bspTreeTransformClone,
+} from './bsp.js';
+
+import {
+  camPopTransform,
+  camPushTransform,
+} from './camera.js';
+
+import {
+  solidCentroidArea,
+  solidClip,
+  solidExtractRegion,
+  solidFill,
+  solidMarkConnectedRegions,
+  solidMomentOfInertia,
+  solidRadiusSquared,
+  solidTransform,
+  solidVertices,
+} from './solid.js';
+
+import {
+  transformCompose,
+  transformInvert,
+  transformNormal,
+  transformPoint,
+  transformRotateCreate,
+  transformStretchCreate,
+  transformTranslate,
+  transformTranslateCreate,
+} from './transform.js'
+
 function physCreate(dt) {
   return {
     bodies: [],
@@ -599,7 +635,7 @@ function physDraw(phys, cam) {
 
     camPushTransform(cam, body.localToWorld);
 
-    solidFill(body.solid, camera.ctx);
+    solidFill(body.solid, cam.ctx);
 
     ctx.beginPath();
     ctx.arc(0.0, 0.0, 4, 0, 2 * Math.PI, false);
@@ -611,6 +647,21 @@ function physDraw(phys, cam) {
     ctx.lineTo(16.0, 0.0);
     ctx.strokeStyle = 'black';
     ctx.stroke();
+
+    ctx.beginPath();
+    var mouseside = bspTreePointSide(body.solid, cam.mouseModel.x, cam.mouseModel.y);
+    if (mouseside == 1 || mouseside == 3) {
+      var lines = bspTreeDebugLines(body.solid, cam.mouseModel.x, cam.mouseModel.y, 256.0);
+      for (var j = 0; j < lines.length; j++) {
+        var line = lines[j];
+        ctx.moveTo(line.a.x, line.a.y);
+        ctx.lineTo(line.b.x, line.b.y);
+      }
+    }
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 0.25;
+    ctx.stroke();
+    ctx.lineWidth = 1.0;
 
     camPushTransform(cam, transformStretchCreate(1.0, -1.0));
     ctx.font = '12px Courier';
@@ -659,3 +710,20 @@ function physPointInsideBodies(phys, p) {
 
   return false;
 }
+
+export {
+  physBodyApplyAngularImpulse,
+  physBodyApplyLinearImpulse,
+  physBodyCreate,
+  physBodyLocalCoordinatesAtPosition,
+  physBodyPropertiesCreate,
+  physBodyVelocity,
+  physClipBodies,
+  physCreate,
+  physDraw,
+  physParticleCreate,
+  physParticlePropertiesCreate,
+  physPointInsideBodies,
+  physReset,
+  physTimeStep,
+};

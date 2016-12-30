@@ -2,23 +2,58 @@
 //
 // Copyright Charles Dick 2015
 
-// TODO: avoid all short-lived allocations by using allocation pools
-
-// TODO: figure out input stuff, so we can hook it to recorder (also have snapshots? how to coordinate each component? recorder can ask for snapshots?)
+// TODO: use webpack, convert to modules
+// TODO: use react
+// TODO: add list of flagged items
+// TODO: use flow
+// TODO: avoid all short-lived allocations by using allocation pools?
 
 var camera;
 var log;
 
-var bspTestSquare = { px: 0, py: 0, nx: 1, ny: 1,
-    in: { px: 0, py: 16, nx: 0, ny: 1,
-        in: null,
-        out: { px: 16, py: 0, nx: 1, ny: 0, in: null, out:null }
-        },
-    out: { px: 0, py: -16, nx: 0, ny: -1,
-        in: null,
-        out: { px: -16, py: 0, nx: -1, ny: 0, in: null, out: null }
-        }
-    };
+import {
+  bspTreeTransformClone
+} from './bsp.js';
+
+import {
+  camCameraToModel,
+  camCreate,
+  camClear,
+} from './camera.js';
+
+import {
+  meshCreate,
+} from './mesh.js';
+
+import {
+  physBodyCreate,
+  physBodyLocalCoordinatesAtPosition,
+  physBodyPropertiesCreate,
+  physClipBodies,
+  physCreate,
+  physDraw,
+  physParticleCreate,
+  physReset,
+} from './phys.js';
+
+import {
+  bspTestSquare,  // TODO: move this
+  playerCreate,
+} from './player.js';
+
+import {
+  recorderCreate,
+  recorderReplay,
+  recorderTimeStep,
+} from './recorder.js';
+
+import {
+  solidCreate,
+} from './solid.js';
+
+import {
+  transformTranslateCreate,
+} from './transform.js'
 
 var bspTestRight = {px: 0, py: 0, nx: 1, ny: 0,
   in: null,
@@ -213,3 +248,5 @@ function main() {
     }
   };
 };
+
+main();

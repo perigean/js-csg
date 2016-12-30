@@ -2,6 +2,17 @@
 //
 // Copyright Charles Dick 2015
 
+import {
+  transformCompose,
+  transformCreate,
+  transformInvert,
+  transformPoint,
+  transformScale,
+  transformStretch,
+  transformStretchCreate,
+  transformTranslate,
+} from './transform.js'
+
 function camCreate(canvas, drawCallback) {
   var ctx = canvas.getContext('2d');
 
@@ -104,8 +115,17 @@ function camCameraToModel(cam, p) {
 
 function camClear(cam) {
   cam.ctx.setTransform(1, 0, 0, 1, 0, 0);
-  cam.ctx.clearRect(0, 0, camera.canvas.width, camera.canvas.height);
+  cam.ctx.clearRect(0, 0, cam.canvas.width, cam.canvas.height);
 
   var t = transformCompose(cam.modelToWorld[cam.modelToWorld.length - 1], cam.worldToCamera);
   cam.ctx.setTransform(t.ix, t.iy, t.jx, t.jy, t.dx, t.dy);
 }
+
+export {
+  camCreate,
+  camCameraToModel,
+  camClear,
+  camPopTransform,
+  camPosition,
+  camPushTransform,
+};

@@ -5,8 +5,49 @@
 // Controls a player in the world simulated by phys.js
 // TODO: binds controls
 // TODO: tracks damage
-//
-// requires phys.js
+
+import {
+  bspTreeTransformClone,
+} from './bsp.js';
+
+import {
+  camPosition,
+} from './camera.js';
+
+import {
+  meshCreate,
+} from './mesh.js';
+
+import {
+  physParticlePropertiesCreate,
+  physPointInsideBodies,
+  physParticleCreate,
+  physBodyCreate,
+  physBodyApplyAngularImpulse,
+  physBodyApplyLinearImpulse,
+  physBodyPropertiesCreate,
+  physBodyVelocity,
+  physClipBodies,
+} from './phys.js';
+
+import {
+  solidCreate,
+} from './solid.js';
+
+import {
+  transformTranslateCreate,
+} from './transform.js';
+
+var bspTestSquare = { px: 0, py: 0, nx: 1, ny: 1,
+    in: { px: 0, py: 16, nx: 0, ny: 1,
+        in: null,
+        out: { px: 16, py: 0, nx: 1, ny: 0, in: null, out:null }
+        },
+    out: { px: 0, py: -16, nx: 0, ny: -1,
+        in: null,
+        out: { px: -16, py: 0, nx: -1, ny: 0, in: null, out: null }
+        }
+    };
 
 function playerCreate(phys, d, θ, input, camera) {
   var state = {
@@ -145,3 +186,8 @@ function playerCreate(phys, d, θ, input, camera) {
     camera: camera,
   };
 }
+
+export {
+  playerCreate,
+  bspTestSquare,
+};

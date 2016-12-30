@@ -2,12 +2,14 @@
 // captures external state changes, allows them to be replayed
 // wraps all inputs into phys so that it can be replayed
 
-// requires phys.js
-
 // clicks is all we care about. Record in world coordinates to make it view independent
 
 // TODO: figure out how to do input with less action at a distance
 //  we can't handle keypresses during replay now...
+
+import {
+  physTimeStep,
+} from './phys.js';
 
 function recorderCreate(phys, input, logText, frameText) {
   return {
@@ -25,7 +27,7 @@ function recorderTimeStep(recorder) {
   var thisFrameInput = JSON.stringify(recorder.input);
 
   if (thisFrameInput !== recorder.lastFrameInput) {
-    recorder.logText.innerHTML += ',\n' + JSON.stringify({
+    recorder.logText.value += ',\n' + JSON.stringify({
       frame: recorder.frame,
       input: recorder.input
     });
@@ -38,7 +40,7 @@ function recorderTimeStep(recorder) {
 }
 
 function recorderReplay(recorder, render) {
-  var inputLog = JSON.parse('[' + recorder.logText.innerHTML + ']');
+  var inputLog = JSON.parse('[' + recorder.logText.value + ']');
   var replayToFrame = Number(recorder.frameText.value);
 
   recorder.logText.innerHTML = '{"frame":0,"input":{"left":false,"right":false,"throttle":false,"fire":false}}';
@@ -67,3 +69,9 @@ function recorderReplay(recorder, render) {
     requestAnimationFrame(recorderReplayer);
   }
 }
+
+export {
+  recorderCreate,
+  recorderReplay,
+  recorderTimeStep,
+};

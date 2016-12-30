@@ -10,10 +10,6 @@
 // bspTree - Tree of Binary Space Partitions, can describe arbitrary regions by nesting splits.
 // bspTreeSolid - bspTree with added polygon information, so we know how to draw the region described.
 //  The polygons cover all paths in the tree, no polygon can be on a branch under a branch with a polygon.
-//
-//
-
-// depends on transform.js
 
 function bspTreeCreate(px, py, nx, ny, inBspTree, outBspTree) {
   return {
@@ -192,3 +188,94 @@ function bspTreeTransformClone(bspTree, t) {
 
   return clone;
 }
+
+function bspDebugLinesClipIn(bsp, lines) {
+  var clipped = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var aside = bspSideStable(bsp, line.a.x, line.a.y);
+    var bside = bspSideStable(bsp, line.b.x, line.b.y);
+    if (aside >= 0.0 && bside >= 0.0) {
+      clipped.push(line);
+    } else if (aside <= 0.0 && bside <= 0.0) {
+      // clipped out
+    } else {
+      var t = bspIntersect(bsp, line.a.x, line.a.y, line.b.x, line.b.y);
+      var cx = t * line.a.x + (1.0 - t) * line.b.x;
+      var cy = t * line.a.y + (1.0 - t) * line.b.y;
+      if (aside > 0.0 && bside < 0.0) {
+        clipped.push({a: line.a, b: { x: cx, y: cy } });
+      } else if (bside > 0.0 && aside < 0.0) {
+        clipped.push({a: { x: cx, y: cy }, b: line.b });
+      } else {
+        throw "line to be clipped is crossing and not crossing!";
+      }
+    }
+  }
+  return clipped;
+}
+
+function bspDebugLinesClipOut(bsp, lines) {
+  var clipped = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var aside = bspSideStable(bsp, line.a.x, line.a.y);
+    var bside = bspSideStable(bsp, line.b.x, line.b.y);
+    if (aside <= 0.0 && bside <= 0.0) {
+      clipped.push(line);
+    } else if (aside >= 0.0 && bside >= 0.0) {
+      // clipped in
+    } else {
+      var t = bspIntersect(bsp, line.a.x, line.a.y, line.b.x, line.b.y);
+      var cx = t * line.a.x + (1.0 - t) * line.b.x;
+      var cy = t * line.a.y + (1.0 - t) * line.b.y;
+      if (aside < 0.0 && bside > 0.0) {
+        clipped.push({a: line.a, b: { x: cx, y: cy } });
+      } else if (bside < 0.0 && aside > 0.0) {
+        clipped.push({a: { x: cx, y: cy }, b: line.b });
+      } else {
+        throw "line to be clipped is crossing and not crossing!";
+      }
+    }
+  }
+  return clipped;
+}
+
+function bspTreeDebugLines(bspTree, x, y, l) {
+  if (bspTree == null) {
+    return [];
+  }
+
+  var nScale = l / Math.sqrt(bspTree.nx * bspTree.nx + bspTree.ny * bspTree.ny);
+  var side = bspSideStable(bspTree, x, y);
+  var line = {
+    a: {
+      x: bspTree.px - bspTree.ny * nScale,
+      y: bspTree.py + bspTree.nx * nScale },
+    b: {
+      x: bspTree.px + bspTree.ny * nScale,
+      y: bspTree.py - bspTree.nx * nScale },
+    side: side };
+
+  var lines;
+  if (side > 0.0) {
+    lines = bspDebugLinesClipIn(bspTree, bspTreeDebugLines(bspTree.in, x, y, l));
+  } else if (side < 0.0) {
+    lines = bspDebugLinesClipOut(bspTree, bspTreeDebugLines(bspTree.out, x, y, l));
+  } else {
+    lines = bspDebugLinesClipIn(bspTree, bspTreeDebugLines(bspTree.in, x, y, l));
+    lines = lines.concat(bspDebugLinesClipOut(bspTree, bspTreeDebugLines(bspTree.out, x, y, l)));
+  }
+  lines.push(line);
+  return lines;
+}
+
+export {
+  bspIntersect,
+  bspSideStable,
+  bspTransform,
+  bspTreeCollide,
+  bspTreeDebugLines,
+  bspTreePointSide,
+  bspTreeTransformClone,
+};

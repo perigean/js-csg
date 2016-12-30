@@ -96,3 +96,19 @@ function transformNormal(t, n) {
   n.x = x;
   n.y = y;
 }
+
+export {
+  transformCompose,
+  transformCreate,
+  transformInvert,
+  transformNormal,
+  transformPoint,
+  transformScale,
+  transformScaleCreate,
+  transformStretch,
+  transformStretchCreate,
+  transformTranslate,
+  transformTranslateCreate,
+  transformRotate,
+  transformRotateCreate,
+};

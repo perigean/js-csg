@@ -2,17 +2,8 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <script src="transform.js"></script>
-    <script src="mesh.js"></script>
-    <script src="bsp.js"></script>
-    <script src="solid.js"></script>
-    <script src="camera.js"></script>
-    <script src="phys.js"></script>
-    <script src="player.js"></script>
-    <script src="recorder.js"></script>
-    <script src="main.js"></script>
   </head>
-  <body onload="main()">
+  <body>
     <canvas style="border-style: solid; border-color: black;" id="canvas" width="640" height="480"></canvas>
     <br />
     <button id="playpause">▶</button>
@@ -27,6 +18,8 @@
       Local: (<span id="localx" class="width: 128px;"></span> px,
       <span id="localy" class="width: 128px;"></span> px)
     </div>
-    <textarea id="log" rows="10" cols="80">{"frame":0,"input":{"left":false,"right":false,"throttle":false,"fire":false}}</textarea>
+    <textarea id="log" rows="8" cols="80">{"frame":0,"input":{"left":false,"right":false,"throttle":false,"fire":false}}</textarea>
+    <textarea id="flagged" rows="1" cols="80"></textarea>
   </body>
+  <script src="bundle.js"></script>
 </html>

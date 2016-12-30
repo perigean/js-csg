@@ -7,6 +7,11 @@
 // depends on transform.js
 // depends on bsp.js
 
+import {
+  bspIntersect,
+  bspSideStable,
+} from './bsp.js'
+
 function meshEdgeVerify(edge) {
   var prev = edge.prev;
   var next = edge.next;
@@ -444,3 +449,21 @@ function meshPolyFill(edge, ctx) {
   ctx.fillStyle = 'lightblue';
   ctx.fill();
 }
+
+export {
+  meshCreate,
+  meshEdgeMerge,
+  meshEdgeSplit,
+  meshEdgeTransform,
+  meshPolyCentroidArea,
+  meshPolyFill,
+  meshPolyMerge,
+  meshPolyMomentOfInertia,
+  meshPolyRadiusSquared,
+  meshPolyRemove,
+  meshPolySetFlag,
+  meshPolySplit,
+  meshPolyStroke,
+  meshPolyVertices,
+  meshSetFlag,
+};

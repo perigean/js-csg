@@ -1,12 +1,31 @@
 // solid.js
 //
 // Copyright Charles Dick 2015
-//
-// depends on transform.js
-// depends on bsp.js
 
 // TODO: maintain property that all branches before poly have both in and out
 // sub trees
+
+import {
+  bspTransform,
+  bspSideStable,
+} from './bsp.js';
+
+import {
+  meshEdgeMerge,
+  meshEdgeSplit,
+  meshEdgeTransform,
+  meshPolyCentroidArea,
+  meshPolyFill,
+  meshPolyMerge,
+  meshPolyMomentOfInertia,
+  meshPolyRadiusSquared,
+  meshPolyRemove,
+  meshPolySetFlag,
+  meshPolySplit,
+  meshPolyStroke,
+  meshPolyVertices,
+  meshSetFlag,
+} from './mesh.js';
 
 function solidCreate(poly) {
     var solid = null;
@@ -398,3 +417,16 @@ function solidStroke(solid, ctx) {
     solidStroke(solid.out, ctx);
   }
 }
+
+export {
+  solidCreate,
+  solidCentroidArea,
+  solidClip,
+  solidExtractRegion,
+  solidFill,
+  solidMarkConnectedRegions,
+  solidMomentOfInertia,
+  solidRadiusSquared,
+  solidTransform,
+  solidVertices,
+};
