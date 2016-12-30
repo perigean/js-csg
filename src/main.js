@@ -2,7 +2,6 @@
 //
 // Copyright Charles Dick 2015
 
-// TODO: use webpack, convert to modules
 // TODO: use react
 // TODO: add list of flagged items
 // TODO: use flow
