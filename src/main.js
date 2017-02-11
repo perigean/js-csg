@@ -248,4 +248,10 @@ function main() {
   };
 };
 
-main();
+import {JsCsg} from './JsCsg.jsx';
+import React from 'react';
+import ReactDOM from 'react-dom';
+ReactDOM.render(
+  (<JsCsg />),
+  document.getElementById('reactroot')
+);
