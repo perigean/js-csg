@@ -48,7 +48,7 @@ function camCreate(canvas, drawCallback) {
     }
 
     camRecompose(cam);
-    drawCallback();
+    drawCallback(cam);
 
     evt.preventDefault();
   });
@@ -60,10 +60,10 @@ function camCreate(canvas, drawCallback) {
     cam.mouseModel.y = evt.offsetY;
     transformPoint(cam.cameraToModel, cam.mouseModel);
 
-    drawCallback();
+    drawCallback(cam);
   });
 
-
+  drawCallback(cam);
   return cam;
 }
 

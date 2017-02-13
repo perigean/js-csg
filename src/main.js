@@ -7,6 +7,8 @@
 // TODO: use flow
 // TODO: avoid all short-lived allocations by using allocation pools?
 
+
+/*
 var camera;
 var log;
 
@@ -247,11 +249,48 @@ function main() {
     }
   };
 };
-
+*/
 import {JsCsg} from './JsCsg.jsx';
 import React from 'react';
 import ReactDOM from 'react-dom';
+
+import {
+  bodyCreate,
+  physBodyPropertiesCreate,
+} from './phys.js';
+
+import {
+  solidCreate,
+} from './solid.js';
+
+import {
+  meshCreate,
+} from './mesh.js';
+
+var shapeProps = physBodyPropertiesCreate(1.0, 0.9, null, null, null, null);
+
+const bodies = [
+  bodyCreate(
+    solidCreate(meshCreate([{ x: -64, y: -64 },{ x: 64, y: -64 },{ x: 64, y: 64 },{ x: -64, y: 64 }])),
+    { x: 0.0, y: 0.0 }, 0.0,    // position
+    { x: 0.0, y: 0.0 }, 0.0,    // velocity
+    shapeProps
+  ),
+  bodyCreate(
+    solidCreate(meshCreate([{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }])),
+    { x: -256.0, y: 0.0 }, 0.0, // position
+    { x: 72.0, y: 0.0 }, 0.0,   // velocity
+    shapeProps
+  ),
+  bodyCreate(
+    solidCreate(meshCreate([{ x: -32, y: -32 },{ x: 32, y: -32 },{ x: 32, y: 32 },{ x: -32, y: 32 }])),
+    { x: 256.0, y: 0.0 }, 0.0,  // position
+    { x: -70.0, y: 0.0 }, 0.0,  // velocity
+    shapeProps
+  ),
+];
+
 ReactDOM.render(
-  (<JsCsg />),
+  (<JsCsg bodies={bodies} />),
   document.getElementById('reactroot')
 );

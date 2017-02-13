@@ -165,7 +165,7 @@ function physBodyPropertiesCreate(ρ, e, oncollideparticle, oncollidebody, ontim
   };
 }
 
-function physBodyCreate(phys, solid, d, θ, v, ω, properties) {
+function bodyCreate(solid, d, θ, v, ω, properties) {
   var l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
   var ca = solidCentroidArea(solid);
@@ -191,7 +191,7 @@ function physBodyCreate(phys, solid, d, θ, v, ω, properties) {
   l2w = transformTranslate(transformRotateCreate(θ), d.x, d.y);
 
   var body = {
-    id: phys.nextPhysId++,
+    id: -1,
     solid: solid,
     verts: solidVertices(solid),
     properties: properties,
@@ -208,9 +208,16 @@ function physBodyCreate(phys, solid, d, θ, v, ω, properties) {
     prevLocalToWorld: l2w
   };
 
-  phys.bodies.push(body);
-
   return body;
+}
+
+function physBodyAdd(phys, body) {
+  if (phys.bodies.find(b => b === body) === undefined) {
+    body.id = phys.nextPhysId++;
+    phys.bodies.push(body);
+  } else {
+    throw `phys body ${body.id} already in simulation`;
+  }
 }
 
 // TODO: make sure all external APIs are safe to call from any callback
@@ -712,9 +719,10 @@ function physPointInsideBodies(phys, p) {
 }
 
 export {
+  bodyCreate,
+  physBodyAdd,
   physBodyApplyAngularImpulse,
   physBodyApplyLinearImpulse,
-  physBodyCreate,
   physBodyLocalCoordinatesAtPosition,
   physBodyPropertiesCreate,
   physBodyVelocity,

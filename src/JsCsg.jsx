@@ -1,24 +1,50 @@
 import React from 'react';
 
+import {
+  camCreate,
+  camClear,
+} from './camera.js';
+
+import {
+  physCreate,
+  physBodyAdd,
+  physDraw,
+} from './phys.js';
+
 class JsCsg extends React.Component {
+  constructor(props) {
+    super(props);
+    const phys = physCreate(0.016666667);
+    if (props.bodies) {
+      for (const body of props.bodies) {
+        physBodyAdd(phys, body);
+      }
+    }
+    this.state = {
+      phys: phys,
+    };
+  }
+
   render() {
+    const canvasRef = (canvas) => {
+      this.camera = camCreate(canvas, (camera) => {
+        camClear(camera);
+        physDraw(this.state.phys, camera);
+      });
+    };
     return (
       <div>
         <canvas
-          ref={canvas => this.canvas = canvas}
+          ref={canvasRef}
+          width={640}
+          height={480}
           style={{
             borderStyle: 'solid',
             borderColor: 'black',
-            width: '640px',
-            height: '480px',
           }} />
       </div>
     );
   }
-
-  //componentDidMount() {
-
-  //}
 }
 
 export {
